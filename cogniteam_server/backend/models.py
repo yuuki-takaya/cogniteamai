@@ -20,12 +20,15 @@ class UserCreate(UserBase):
     password: str
 
 class User(UserBase):
-    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    email: EmailStr
-    prompt: Optional[str] = None
+    user_id: str = Field(..., description="Unique identifier for the user")
+    email: EmailStr = Field(..., description="User's email address")
+    display_name: str = Field(..., description="User's display name")
+    created_at: date = Field(default_factory=date.today, description="Date when the user was created")
+    prompt: Optional[str] = Field(None, description="Generated prompt for the user's agent")
+    # Add other fields as needed (e.g., profile picture URL, preferences, etc.)
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserResponse(UserBase):
     user_id: str

@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 // Corresponds to ChatGroup model in the backend
 class ChatGroup {
   final String groupId;
@@ -31,7 +29,8 @@ class ChatGroup {
       agentIds: List<String>.from(json['agent_ids'] as List<dynamic>),
       createdBy: json['created_by'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
-      memberUserIds: List<String>.from(json['member_user_ids'] as List<dynamic>),
+      memberUserIds:
+          List<String>.from(json['member_user_ids'] as List<dynamic>),
       activeMissionId: json['active_mission_id'] as String?,
       lastMessageAt: json['last_message_at'] == null
           ? null
@@ -72,4 +71,3 @@ class ChatGroupCreationData {
     };
   }
 }
-```

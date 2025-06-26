@@ -1,7 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials
 import os
-from ..config import settings
+from config import settings
 
 def initialize_firebase_admin():
     """

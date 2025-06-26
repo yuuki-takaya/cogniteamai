@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from firebase_admin import firestore
 
-from ..models import UserUpdate, UserResponse, User # Pydantic models
-from ..services.user_service import UserService
-from ..dependencies import get_current_user
-from ..utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from models import UserUpdate, UserResponse, User # Pydantic models
+from services.user_service import UserService
+from dependencies import get_current_user
+from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
 
 router = APIRouter(
     prefix="/users",
@@ -74,5 +74,3 @@ async def get_my_agent_prompt(current_user: User = Depends(get_current_user)):
         return {"user_id": current_user.user_id, "prompt": None, "message": "Prompt not available or not set."}
 
     return {"user_id": current_user.user_id, "prompt": prompt}
-
-```

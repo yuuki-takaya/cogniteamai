@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .utils.firebase_setup import initialize_firebase_admin
-from .routers import auth, user, agent, chat_group, chat, insight
-from .config import settings
+from utils.firebase_setup import initialize_firebase_admin
+from routers import auth, user, agent, chat_group, chat, insight
+from config import settings
 
 # Initialize Firebase Admin SDK on startup
 initialize_firebase_admin()
@@ -49,7 +49,7 @@ async def on_startup():
     # Ensure Firebase is initialized (already done globally, but good practice if this were separate)
     # initialize_firebase_admin()
     from firebase_admin import firestore
-    from .services.agent_service import AgentService # Import here to avoid circular deps if any
+    from services.agent_service import AgentService # Import here to avoid circular deps if any
 
     db = firestore.client()
     print("Ensuring default agents in Firestore...")

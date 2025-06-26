@@ -1,11 +1,11 @@
 from firebase_admin import firestore
 from typing import Optional # Added for Optional type hint
-from ..models import ChatGroup, ChatGroupCreate, Message, Mission # Pydantic models
-from .user_service import UserService # Potentially to validate user
-from .agent_service import AgentService # Potentially to validate agents
+from models import ChatGroup, ChatGroupCreate, Message, Mission # Pydantic models
+from services.user_service import UserService # Potentially to validate user
+from services.agent_service import AgentService # Potentially to validate agents
 import uuid
 from datetime import datetime, timezone
-from ..utils.firebase_setup import initialize_firebase_admin
+from utils.firebase_setup import initialize_firebase_admin
 
 class ChatGroupService:
 
@@ -215,5 +215,3 @@ class ChatGroupService:
         except Exception as e:
             print(f"Error fetching active mission {group_doc.active_mission_id} for group {group_id}: {e}")
             return None
-
-```

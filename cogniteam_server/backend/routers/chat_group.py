@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from firebase_admin import firestore
 
-from ..models import ChatGroup, ChatGroupCreate, Message, User, Mission, MissionCreate # Pydantic models
-from ..services.chat_group_service import ChatGroupService
-from ..dependencies import get_current_user # For authentication
-from ..utils.firebase_setup import initialize_firebase_admin
+from models import ChatGroup, ChatGroupCreate, Message, User, Mission, MissionCreate # Pydantic models
+from services.chat_group_service import ChatGroupService
+from dependencies import get_current_user # For authentication
+from utils.firebase_setup import initialize_firebase_admin
 
 router = APIRouter(
     prefix="/chat_groups",
@@ -149,4 +149,3 @@ async def set_mission_for_chat_group(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to set or update mission for the group.")
 
     return mission
-```

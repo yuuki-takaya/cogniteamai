@@ -4,6 +4,7 @@ import 'package:cogniteam_app/models/user.dart';
 import 'package:cogniteam_app/services/auth_service.dart';
 import 'package:cogniteam_app/services/api_service.dart';
 import 'package:cogniteam_app/services/user_service.dart'; // Import UserService
+import 'package:cogniteam_app/services/chat_group_service.dart'; // Import ChatGroupService
 
 // Provider for FirebaseAuth instance
 final firebaseAuthProvider = Provider<fb_auth.FirebaseAuth>((ref) {
@@ -37,11 +38,14 @@ final authServiceProvider = Provider<AuthService>((ref) {
   // This setup can be fragile if AuthService is used elsewhere without ensuring ApiService is ready.
   // A FutureProvider for authServiceProvider would be more robust.
   // However, for use with AuthStateNotifier that handles async init, this can work.
-  final apiService = ref.watch(apiServiceProvider).value; // Get the value, assuming it's loaded by consumer
+  final apiService = ref
+      .watch(apiServiceProvider)
+      .value; // Get the value, assuming it's loaded by consumer
   if (apiService == null) {
     // This case should ideally be prevented by consumers awaiting apiServiceProvider.
     // Or, authServiceProvider should be a FutureProvider.
-    throw StateError("ApiService not yet available. AuthServiceProvider cannot be created. Ensure ApiServiceProvider is loaded before accessing this.");
+    throw StateError(
+        "ApiService not yet available. AuthServiceProvider cannot be created. Ensure ApiServiceProvider is loaded before accessing this.");
   }
   return AuthService(firebaseAuth, apiService);
 });
@@ -50,7 +54,8 @@ final authServiceProvider = Provider<AuthService>((ref) {
 final userServiceProvider = Provider<UserService>((ref) {
   final apiService = ref.watch(apiServiceProvider).value;
   if (apiService == null) {
-    throw StateError("ApiService not yet available for UserService. Ensure ApiServiceProvider is loaded.");
+    throw StateError(
+        "ApiService not yet available for UserService. Ensure ApiServiceProvider is loaded.");
   }
   return UserService(apiService);
 });
@@ -59,11 +64,11 @@ final userServiceProvider = Provider<UserService>((ref) {
 final chatGroupServiceProvider = Provider<ChatGroupService>((ref) {
   final apiService = ref.watch(apiServiceProvider).value;
   if (apiService == null) {
-    throw StateError("ApiService not yet available for ChatGroupService. Ensure ApiServiceProvider is loaded.");
+    throw StateError(
+        "ApiService not yet available for ChatGroupService. Ensure ApiServiceProvider is loaded.");
   }
   return ChatGroupService(apiService);
 });
-
 
 // This provider gives us the stream of Firebase auth state changes.
 // It will only provide the stream once authServiceProvider is successfully created.
@@ -79,10 +84,10 @@ final authStateChangesProvider = StreamProvider<fb_auth.User?>((ref) {
   //   error: (e,s) => Stream.error(e,s),
   // );
   // For now, assuming authServiceProvider is synchronous and ApiService is handled by AuthStateNotifier's init
-  final authService = ref.watch(authServiceProvider); // This might throw if ApiService not ready
+  final authService = ref
+      .watch(authServiceProvider); // This might throw if ApiService not ready
   return authService.authStateChanges;
 });
-
 
 // Manages the application's authentication state, including the AppUser profile.
 class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
@@ -92,19 +97,23 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   // Subscription to Firebase auth state changes
   // StreamSubscription<fb_auth.User?>? _authStateChangesSubscription;
 
-
   AuthStateNotifier(this._ref) : super(const AsyncValue.loading()) {
     _init();
   }
 
   Future<void> _init() async {
+    print("AuthStateNotifier: Starting _init()");
+
     // Wait for ApiService to be ready first.
     // This is crucial because AuthService depends on it.
     // This ensures that when authServiceProvider is read below, it gets a valid ApiService.
+    print("AuthStateNotifier: Waiting for ApiService to be ready...");
     await _ref.read(apiServiceProvider.future);
+    print("AuthStateNotifier: ApiService is ready");
 
     // Now it's safe to get AuthService
     final authService = _ref.read(authServiceProvider);
+    print("AuthStateNotifier: AuthService obtained");
 
     // Listen to Firebase auth state changes
     // _authStateChangesSubscription = authService.authStateChanges.listen((fb_auth.User? user) async {
@@ -124,29 +133,46 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     //     }
     //   }
     // });
-     _firebaseUser = authService.currentUser;
-     if (_firebaseUser == null) {
-       state = const AsyncValue.data(null);
-     } else {
-       await _fetchAppUserProfile(authService, _firebaseUser!);
-     }
+    _firebaseUser = authService.currentUser;
+    print(
+        "AuthStateNotifier: Firebase current user: ${_firebaseUser?.uid ?? 'null'}");
+
+    if (_firebaseUser == null) {
+      print("AuthStateNotifier: No Firebase user found, setting state to null");
+      state = const AsyncValue.data(null);
+    } else {
+      print(
+          "AuthStateNotifier: Firebase user found, fetching AppUser profile...");
+      await _fetchAppUserProfile(authService, _firebaseUser!);
+    }
   }
 
-  Future<void> _fetchAppUserProfile(AuthService authService, fb_auth.User firebaseUser) async {
+  Future<void> _fetchAppUserProfile(
+      AuthService authService, fb_auth.User firebaseUser) async {
+    print(
+        "AuthStateNotifier: _fetchAppUserProfile called for user: ${firebaseUser.uid}");
     try {
       state = const AsyncValue.loading(); // Indicate loading profile
+      print("AuthStateNotifier: Calling authService.getCurrentAppUser()...");
       final appUser = await authService.getCurrentAppUser(); // Uses /auth/me
+      print(
+          "AuthStateNotifier: getCurrentAppUser() completed, result: ${appUser?.userId ?? 'null'}");
       if (appUser != null) {
         state = AsyncValue.data(appUser);
+        print("AuthStateNotifier: AppUser profile loaded successfully");
       } else {
         // This means user is authenticated with Firebase, but backend profile is missing or inaccessible.
         // This is a critical state. Sign out from Firebase to reset.
+        print(
+            "AuthStateNotifier: AppUser profile is null, signing out from Firebase");
         await authService.signOut(); // This authService instance is from _init
         state = const AsyncValue.data(null); // Reflect signed out state
-        print("Signed out Firebase user because backend profile was not found/accessible via /auth/me.");
+        print(
+            "Signed out Firebase user because backend profile was not found/accessible via /auth/me.");
       }
     } catch (e, stack) {
-      print("Error fetching AppUser profile: $e");
+      print("AuthStateNotifier: Error fetching AppUser profile: $e");
+      print("AuthStateNotifier: Stack trace: $stack");
       state = AsyncValue.error(e, stack);
       // Potentially sign out from Firebase if critical error
       // await authService.signOut(); // This authService instance is from _init
@@ -157,14 +183,16 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     final userService = _ref.read(userServiceProvider);
     final currentAppUser = state.value; // Get current user data if available
     if (currentAppUser == null) {
-      state = AsyncValue.error("User not logged in, cannot update profile.", StackTrace.current);
+      state = AsyncValue.error(
+          "User not logged in, cannot update profile.", StackTrace.current);
       return;
     }
 
     try {
       state = const AsyncValue.loading(); // Or a specific "updating" state
       final updatedUser = await userService.updateUserProfile(updateData);
-      state = AsyncValue.data(updatedUser); // Update state with the new user profile
+      state = AsyncValue.data(
+          updatedUser); // Update state with the new user profile
     } catch (e, stack) {
       // Revert to previous state or keep showing error, with old data if possible
       state = AsyncValue.error(e, stack);
@@ -183,7 +211,9 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
       final prompt = await userService.getUserAgentPrompt();
       // Optionally update the prompt in the current AppUser state if it differs,
       // though ideally backend ensures AppUser model is always consistent.
-      if (state.hasValue && state.value != null && state.value!.prompt != prompt) {
+      if (state.hasValue &&
+          state.value != null &&
+          state.value!.prompt != prompt) {
         state = AsyncValue.data(state.value!.copyWith(prompt: prompt));
       }
       return prompt;
@@ -194,12 +224,13 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     }
   }
 
-
   Future<void> signUp(UserCreationData userCreationData) async {
-    final authService = _ref.read(authServiceProvider); // Use _ref passed in constructor
+    final authService =
+        _ref.read(authServiceProvider); // Use _ref passed in constructor
     try {
       state = const AsyncValue.loading();
-      final appUser = await authService.signUp(userCreationData: userCreationData);
+      final appUser =
+          await authService.signUp(userCreationData: userCreationData);
       // After successful signup, Firebase auth state listener should pick up the new user
       // and trigger profile fetch. Or, we can set it directly.
       _firebaseUser = authService.currentUser; // Update current Firebase user
@@ -215,7 +246,8 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     final authService = _ref.read(authServiceProvider); // Use _ref
     try {
       state = const AsyncValue.loading();
-      final appUser = await authService.signInWithEmailAndPassword(email: email, password: password);
+      final appUser = await authService.signInWithEmailAndPassword(
+          email: email, password: password);
       // Auth state listener should handle the rest, or set directly:
       _firebaseUser = authService.currentUser;
       state = AsyncValue.data(appUser);
@@ -244,12 +276,12 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     final authService = _ref.read(authServiceProvider); // Use _ref
     final fbUser = authService.currentUser;
     if (fbUser != null) {
-      await _fetchAppUserProfile(authService, fbUser); // authService instance is passed here
+      await _fetchAppUserProfile(
+          authService, fbUser); // authService instance is passed here
     } else {
       state = const AsyncValue.data(null); // No Firebase user, so no profile
     }
   }
-
 
   // @override
   // void dispose() {
@@ -259,7 +291,8 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
 }
 
 // The StateNotifierProvider for AuthState
-final authStateNotifierProvider = StateNotifierProvider<AuthStateNotifier, AsyncValue<AppUser?>>((ref) {
+final authStateNotifierProvider =
+    StateNotifierProvider<AuthStateNotifier, AsyncValue<AppUser?>>((ref) {
   // Pass the ref to AuthStateNotifier's constructor.
   // The _init method within AuthStateNotifier will use this ref to read other providers.
   return AuthStateNotifier(ref);
@@ -279,4 +312,3 @@ final firebaseUserProvider = Provider<fb_auth.User?>((ref) {
   final authState = ref.watch(authStateChangesProvider);
   return authState.asData?.value;
 });
-```

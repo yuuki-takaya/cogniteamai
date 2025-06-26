@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 // Corresponds to Message model in the backend
 class Message {
   final String messageId;
@@ -7,7 +5,8 @@ class Message {
   final String senderId; // User ID or Agent ID
   final String? senderName; // Display name of the sender
   final String content;
-  final DateTime timestamp; // Store as DateTime, convert from/to ISO string for API
+  final DateTime
+      timestamp; // Store as DateTime, convert from/to ISO string for API
 
   Message({
     required this.messageId,
@@ -25,7 +24,8 @@ class Message {
       senderId: json['sender_id'] as String,
       senderName: json['sender_name'] as String?,
       content: json['content'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String).toLocal(), // Parse and convert to local time
+      timestamp: DateTime.parse(json['timestamp'] as String)
+          .toLocal(), // Parse and convert to local time
     );
   }
 
@@ -39,7 +39,8 @@ class Message {
       'sender_id': senderId,
       'sender_name': senderName,
       'content': content,
-      'timestamp': timestamp.toUtc().toIso8601String(), // Send as UTC ISO string
+      'timestamp':
+          timestamp.toUtc().toIso8601String(), // Send as UTC ISO string
     };
   }
 
@@ -58,4 +59,3 @@ class Message {
     return 'Message{messageId: $messageId, senderId: $senderId, content: "$content"}';
   }
 }
-```

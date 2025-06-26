@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from firebase_admin import firestore # For db client dependency or direct use
 
-from ..services.agent_service import AgentService
-from ..models import Agent # Pydantic model
-# from ..dependencies import get_current_user # Uncomment if authentication is needed
+from services.agent_service import AgentService
+from models import Agent # Pydantic model
+# from dependencies import get_current_user # Uncomment if authentication is needed
 
 router = APIRouter(
     prefix="/agents",
@@ -37,5 +37,3 @@ async def list_all_system_agents():
     except Exception as e:
         print(f"Error retrieving agents: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving agents: {str(e)}")
-
-```

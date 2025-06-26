@@ -1,8 +1,8 @@
 from firebase_admin import auth, firestore
-from ..models import UserCreate, User # Pydantic models
-from .user_service import UserService
+from models import UserCreate, User # Pydantic models
+from services.user_service import UserService
 from fastapi import HTTPException, status
-from ..utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
 
 # Ensure Firebase is initialized before this module is heavily used.
 # Typically, initialization happens at app startup.
@@ -142,4 +142,3 @@ class AuthService:
 #     to_encode.update({"exp": expire})
 #     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 #     return encoded_jwt
-```

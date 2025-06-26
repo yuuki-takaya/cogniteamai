@@ -31,7 +31,8 @@ class UserProfileUpdateData {
     final Map<String, dynamic> data = {};
     if (name != null) data['name'] = name;
     if (sex != null) data['sex'] = sex;
-    if (birthDate != null) data['birth_date'] = birthDate!.toIso8601String().split('T').first;
+    if (birthDate != null)
+      data['birth_date'] = birthDate!.toIso8601String().split('T').first;
     if (mbti != null) data['mbti'] = mbti;
     if (company != null) data['company'] = company;
     if (division != null) data['division'] = division;
@@ -41,7 +42,6 @@ class UserProfileUpdateData {
     return data;
   }
 }
-
 
 class UserService {
   final ApiService _apiService;
@@ -60,33 +60,38 @@ class UserService {
       if (response.statusCode == 200 && response.data != null) {
         return AppUser.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Failed to update user profile: ${response.statusMessage} ${response.data}');
+        throw Exception(
+            'Failed to update user profile: ${response.statusMessage} ${response.data}');
       }
     } on DioException catch (e) {
-      final errorMsg = e.response?.data?['detail'] ?? e.message ?? "Profile update failed";
+      final errorMsg =
+          e.response?.data?['detail'] ?? e.message ?? "Profile update failed";
       throw Exception('API Error updating profile: $errorMsg');
     } catch (e) {
-      throw Exception('An unexpected error occurred while updating profile: $e');
+      throw Exception(
+          'An unexpected error occurred while updating profile: $e');
     }
   }
 
   /// Fetches the current user's generated agent prompt from the backend.
   Future<String?> getUserAgentPrompt() async {
     try {
-      final response = await _apiService.get('/users/me/prompt'); // Backend endpoint
+      final response =
+          await _apiService.get('/users/me/prompt'); // Backend endpoint
 
       if (response.statusCode == 200 && response.data != null) {
         final responseData = response.data as Map<String, dynamic>;
         return responseData['prompt'] as String?; // Prompt can be null
       } else {
-        throw Exception('Failed to get user prompt: ${response.statusMessage} ${response.data}');
+        throw Exception(
+            'Failed to get user prompt: ${response.statusMessage} ${response.data}');
       }
     } on DioException catch (e) {
-      final errorMsg = e.response?.data?['detail'] ?? e.message ?? "Failed to get prompt";
+      final errorMsg =
+          e.response?.data?['detail'] ?? e.message ?? "Failed to get prompt";
       throw Exception('API Error getting prompt: $errorMsg');
     } catch (e) {
       throw Exception('An unexpected error occurred while getting prompt: $e');
     }
   }
 }
-```

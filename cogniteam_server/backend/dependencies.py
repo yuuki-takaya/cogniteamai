@@ -1,11 +1,11 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer # For extracting token from Authorization header
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from firebase_admin import firestore, auth
 
-from .services.auth_service import AuthService # For token verification logic
-from .services.user_service import UserService   # For fetching user profile from Firestore
-from .models import User                         # Pydantic User model
-from .utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from services.auth_service import AuthService # For token verification logic
+from services.user_service import UserService   # For fetching user profile from Firestore
+from models import User                         # Pydantic User model
+from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
 
 # This scheme will look for an "Authorization" header with a "Bearer" token.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") # tokenUrl is for documentation, not directly used by this dependency if token is passed in header.
@@ -77,4 +77,3 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 # Example of how get_current_user_id might be implemented if needed:
 # async def get_current_user_id(current_user: User = Depends(get_current_user)) -> str:
 #    return current_user.user_id
-```

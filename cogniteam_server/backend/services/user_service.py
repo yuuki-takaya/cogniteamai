@@ -1,5 +1,5 @@
 from firebase_admin import firestore
-from ..models import User, UserCreate # Pydantic models
+from models import User, UserCreate # Pydantic models
 from datetime import date
 
 # This service interacts with the 'users' collection in Firestore.
@@ -62,6 +62,11 @@ class UserService:
         db_client: Firestore client instance.
         Returns a Pydantic User model instance if successful, None otherwise.
         """
+        print(f"UserService: Starting create_user_in_firestore for UID: {user_id}")
+        print(f"UserService: User email: {user_email}")
+        print(f"UserService: User data dict: {user_data_dict}")
+        print(f"UserService: Prompt length: {len(prompt)}")
+        
         users_collection = db_client.collection('users')
         try:
             # Prepare the document data for Firestore
@@ -69,6 +74,7 @@ class UserService:
             firestore_user_data = {
                 "user_id": user_id, # This is the Firebase UID, also the document ID
                 "email": user_email,
+                "display_name": user_data_dict.get("name"), # Use name as display_name
                 "name": user_data_dict.get("name"),
                 "sex": user_data_dict.get("sex"),
                 "birth_date": user_data_dict.get("birth_date").isoformat() if isinstance(user_data_dict.get("birth_date"), date) else str(user_data_dict.get("birth_date")),
@@ -79,21 +85,31 @@ class UserService:
                 "section": user_data_dict.get("section"),
                 "role": user_data_dict.get("role"),
                 "prompt": prompt,
+                "created_at": date.today().isoformat(), # Add created_at field
                 # Add any other fields from User model that should be initialized
                 # "created_at": firestore.SERVER_TIMESTAMP, # Optional: server-side timestamp
             }
+            print(f"UserService: Prepared Firestore data: {firestore_user_data}")
+            
             # Filter out None values to keep Firestore document clean, unless None is a valid explicit value
             firestore_user_data_cleaned = {k: v for k, v in firestore_user_data.items() if v is not None}
+            print(f"UserService: Cleaned Firestore data: {firestore_user_data_cleaned}")
 
-
+            print(f"UserService: Attempting to write to Firestore document: {user_id}")
             users_collection.document(user_id).set(firestore_user_data_cleaned)
             print(f"Successfully created user profile in Firestore for UID: {user_id}")
 
             # Return a Pydantic User model instance
-            return User(**firestore_user_data_cleaned)
+            print(f"UserService: Creating User model from data")
+            user_model = User(**firestore_user_data_cleaned)
+            print(f"UserService: Successfully created User model: {user_model}")
+            return user_model
 
         except Exception as e:
-            print(f"Error creating user profile in Firestore for UID {user_id}: {e}")
+            print(f"UserService: Error creating user profile in Firestore for UID {user_id}: {e}")
+            print(f"UserService: Error type: {type(e)}")
+            import traceback
+            print(f"UserService: Full traceback: {traceback.format_exc()}")
             # The caller (AuthService) should handle rollback of Firebase Auth user if this fails.
             return None
 
@@ -119,6 +135,20 @@ class UserService:
                         print(f"Warning: Could not parse birth_date string '{user_data['birth_date']}' for user {user_id}")
                         # Decide on fallback: None, or keep as string, or error
                         user_data['birth_date'] = None # Or some other default handling
+                
+                # Ensure display_name field exists (for backward compatibility)
+                if 'display_name' not in user_data and 'name' in user_data:
+                    user_data['display_name'] = user_data['name']
+                
+                # Ensure created_at field exists (for backward compatibility)
+                if 'created_at' not in user_data:
+                    user_data['created_at'] = date.today()
+                elif isinstance(user_data['created_at'], str):
+                    try:
+                        user_data['created_at'] = date.fromisoformat(user_data['created_at'])
+                    except ValueError:
+                        user_data['created_at'] = date.today()
+                
                 return user_data
             return None
         except Exception as e:
@@ -173,5 +203,3 @@ class UserService:
         """Fetches only the prompt for a given user."""
         user_data = await UserService.get_user_by_id(user_id, db_client)
         return user_data.get('prompt') if user_data else None
-
-```

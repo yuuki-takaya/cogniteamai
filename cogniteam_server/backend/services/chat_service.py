@@ -1,15 +1,13 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, Tuple, Set
 from firebase_admin import firestore
-from google.cloud import aiplatform # Vertex AI SDK
-# from google.oauth2 import service_account # If using service account directly for Vertex AI
-
-from ..config import settings # For Vertex AI project details
-from .chat_group_service import ChatGroupService
-from .agent_service import AgentService
-from .user_service import UserService # To get user names
-from ..models import Message as MessageModel, Agent as AgentModel, Mission as MissionModel # Pydantic models
-from ..utils.firebase_setup import initialize_firebase_admin
+from google.cloud import aiplatform # For Vertex AI
+from config import settings # For Vertex AI project details
+from services.chat_group_service import ChatGroupService
+from services.agent_service import AgentService
+from services.user_service import UserService # To get user names
+from models import Message as MessageModel, Agent as AgentModel, Mission as MissionModel # Pydantic models
+from utils.firebase_setup import initialize_firebase_admin
 import json # For serializing messages for WebSocket
 
 class ConnectionManager:
@@ -257,5 +255,3 @@ class ChatService:
         prompt_lines.append(f"Respond to the last message from {last_message_from_human.sender_name}: \"{last_message_from_human.content}\"")
 
         return "\n".join(prompt_lines)
-
-```

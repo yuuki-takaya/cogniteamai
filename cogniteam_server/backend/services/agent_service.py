@@ -1,6 +1,6 @@
 from firebase_admin import firestore
-from ..models import Agent # Pydantic model
-from ..utils.firebase_setup import initialize_firebase_admin
+from models import Agent # Pydantic model
+from utils.firebase_setup import initialize_firebase_admin
 
 class AgentService:
 
@@ -88,5 +88,3 @@ class AgentService:
 #     await AgentService.ensure_default_agents(db)
 #
 # app.add_event_handler("startup", on_startup)
-
-```
