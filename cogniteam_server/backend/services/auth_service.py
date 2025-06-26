@@ -1,8 +1,10 @@
 from firebase_admin import auth, firestore
 from models import UserCreate, User # Pydantic models
 from services.user_service import UserService
+from services.agent_engine_service import AgentEngineService
 from fastapi import HTTPException, status
 from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from config import settings
 
 # Ensure Firebase is initialized before this module is heavily used.
 # Typically, initialization happens at app startup.
@@ -17,25 +19,33 @@ class AuthService:
     async def register_new_user(user_data: UserCreate) -> User:
         """
         Registers a new user in Firebase Authentication and then saves their profile to Firestore.
+        Also creates a Google AI Agent and registers it with Vertex AI Agent Engine.
         """
+        print(f"AuthService: Starting register_new_user for email: {user_data.email}")
         initialize_firebase_admin() # Ensure it's initialized, though ideally done once at startup
         db = firestore.client() # Get Firestore client instance
 
         try:
+            print(f"AuthService: Attempting to create Firebase user for email: {user_data.email}")
             firebase_user_record = auth.create_user(
                 email=user_data.email,
                 password=user_data.password,
                 display_name=user_data.name  # Optional: set display name in Firebase Auth
             )
             uid = firebase_user_record.uid
-            print(f"Successfully created new user in Firebase Auth: {uid} for email: {user_data.email}")
-        except auth.EmailAlreadyExistsError:
+            print(f"AuthService: Successfully created new user in Firebase Auth: {uid} for email: {user_data.email}")
+        except auth.EmailAlreadyExistsError as e:
+            print(f"AuthService: EmailAlreadyExistsError for email: {user_data.email}")
+            print(f"AuthService: Error details: {e}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered."
             )
         except Exception as e:
-            print(f"Error creating user in Firebase Auth: {e}")
+            print(f"AuthService: Error creating user in Firebase Auth: {e}")
+            print(f"AuthService: Error type: {type(e)}")
+            import traceback
+            print(f"AuthService: Full traceback: {traceback.format_exc()}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Could not create user in Firebase Authentication: {e}"
@@ -47,6 +57,43 @@ class AuthService:
         # Generate prompt (this might be better placed in UserService or called by it)
         prompt = UserService.generate_prompt_from_user_data(user_profile_data)
 
+        # Create Google AI Agent and register with Vertex AI Agent Engine
+        agent_engine_endpoint = None
+        if settings.VERTEX_AI_AGENT_ENGINE_ENABLED and not settings.VERTEX_AI_AGENT_ENGINE_SKIP_CREATION:
+            print(f"AuthService: Agent Engine is enabled, attempting to create agent for user {uid}")
+            try:
+                import asyncio
+                agent_engine_service = AgentEngineService()
+                
+                print(f"AuthService: Starting Agent Engine creation with timeout...")
+                
+                # Set timeout for Agent Engine creation (10 minutes)
+                agent_result = await asyncio.wait_for(
+                    agent_engine_service.create_and_register_agent(
+                        name=user_data.name,
+                        description=str(user_data.model_dump()),
+                        instruction=prompt
+                    ),
+                    timeout=600.0  # 10 minutes timeout
+                )
+                agent_engine_endpoint = agent_result["endpoint_url"]
+                print(f"AuthService: Successfully created and registered agent for user {uid}. Endpoint: {agent_engine_endpoint}")
+            except asyncio.TimeoutError:
+                print(f"AuthService: Agent Engine creation timed out for user {uid}. Continuing without agent.")
+                agent_engine_endpoint = None
+            except Exception as e:
+                print(f"AuthService: Warning: Failed to create/register agent for user {uid}: {e}")
+                print(f"AuthService: Error type: {type(e)}")
+                import traceback
+                print(f"AuthService: Full traceback: {traceback.format_exc()}")
+                # Continue with user creation even if agent creation fails
+                # The user can still use the system, just without a personalized agent
+                agent_engine_endpoint = None
+        elif settings.VERTEX_AI_AGENT_ENGINE_SKIP_CREATION:
+            print(f"AuthService: Agent Engine creation is skipped (VERTEX_AI_AGENT_ENGINE_SKIP_CREATION=true). Skipping agent creation for user {uid}")
+        else:
+            print(f"AuthService: Agent Engine is disabled (VERTEX_AI_AGENT_ENGINE_ENABLED=false). Skipping agent creation for user {uid}")
+
         try:
             # Create user profile in Firestore using UserService
             # The UserService.create_user_in_firestore should return a Pydantic User model instance or dict
@@ -55,6 +102,7 @@ class AuthService:
                 user_email=user_data.email, # Pass email to be stored in Firestore user doc
                 user_data_dict=user_profile_data, # Pass the full Pydantic model data as dict
                 prompt=prompt,
+                agent_engine_endpoint=agent_engine_endpoint, # Pass the endpoint URL
                 db_client=db # Pass the Firestore client
             )
             if not created_user_profile:

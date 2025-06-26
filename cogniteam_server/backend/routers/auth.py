@@ -6,6 +6,7 @@ from services.auth_service import AuthService
 from models import UserCreate, UserResponse, IdTokenRequest, User # Pydantic models
 from dependencies import get_current_user # For authenticated endpoints if needed elsewhere
 from firebase_admin import firestore, auth # For type hinting or specific exceptions
+from config import settings # For agent engine configuration
 
 router = APIRouter(
     prefix="/auth",
@@ -20,6 +21,7 @@ async def signup_new_user(user_data: UserCreate):
     - Creates user profile in Firestore with a generated initial prompt.
     - If user already exists, attempts to sign them in instead.
     """
+    print(f"Starting signup process for email: {user_data.email}")
     try:
         # AuthService.register_new_user handles both Firebase Auth and Firestore profile creation.
         created_user = await AuthService.register_new_user(user_data)
@@ -28,27 +30,32 @@ async def signup_new_user(user_data: UserCreate):
 
         # Convert User model to UserResponse model if necessary, or ensure UserResponse fields are present
         # Assuming User model from AuthService has all necessary fields for UserResponse
+        print(f"Successfully created new user: {created_user.email}")
+        print(f"User UID: {created_user.user_id}")
+        print(f"User profile created in Firestore successfully")
         return UserResponse(**created_user.model_dump())
     except HTTPException as e:
-        # If the error is "Email already registered", try to sign in the existing user
+        print(f"HTTPException during signup: status_code={e.status_code}, detail={e.detail}")
+        # If the error is "Email already registered", check if it's a real existing user or a failed previous signup
         if e.status_code == status.HTTP_400_BAD_REQUEST and "Email already registered" in str(e.detail):
-            print(f"User {user_data.email} already exists, attempting to sign in...")
+            print(f"User {user_data.email} already exists, checking Firebase and Firestore status...")
             try:
-                # Try to sign in the existing user
-                # First, get the Firebase user by email
+                # Check if the user actually exists in Firebase
                 firebase_user = auth.get_user_by_email(user_data.email)
                 uid = firebase_user.uid
+                print(f"Found existing Firebase user with UID: {uid}")
                 
-                # Get the user profile from Firestore
+                # Check if user profile exists in Firestore
                 db = firestore.client()
                 user_profile = await AuthService.get_user_by_firebase_uid(uid, db_client=db)
                 
                 if user_profile:
-                    print(f"Successfully retrieved existing user profile for {user_data.email}")
+                    print(f"User {user_data.email} already has a complete profile. This is a duplicate signup attempt.")
+                    # Return existing user profile instead of creating a new one
                     return UserResponse(**user_profile.model_dump())
                 else:
-                    # User exists in Firebase but not in Firestore - create the profile
-                    print(f"User {user_data.email} exists in Firebase but profile missing in Firestore. Creating profile...")
+                    # User exists in Firebase but not in Firestore - this indicates a failed previous signup
+                    print(f"User {user_data.email} exists in Firebase but profile missing in Firestore. Creating missing profile...")
                     try:
                         # Prepare user data for Firestore, excluding password
                         user_profile_data = user_data.model_dump(exclude={"password"})
@@ -59,6 +66,43 @@ async def signup_new_user(user_data: UserCreate):
                         prompt = UserService.generate_prompt_from_user_data(user_profile_data)
                         print(f"Generated prompt: {prompt[:100]}...")  # Show first 100 chars
                         
+                        # Create Google AI Agent and register with Vertex AI Agent Engine (same as new user creation)
+                        agent_engine_endpoint = None
+                        if settings.VERTEX_AI_AGENT_ENGINE_ENABLED and not settings.VERTEX_AI_AGENT_ENGINE_SKIP_CREATION:
+                            try:
+                                import asyncio
+                                from services.agent_engine_service import AgentEngineService
+                                
+                                print(f"Starting Agent Engine creation for existing user {uid} with timeout...")
+                                
+                                # Set timeout for Agent Engine creation (10 minutes)
+                                agent_engine_service = AgentEngineService()
+                                agent_result = await asyncio.wait_for(
+                                    agent_engine_service.create_and_register_agent(
+                                        name=user_data.name,
+                                        description=str(user_data.model_dump()),
+                                        instruction=prompt
+                                    ),
+                                    timeout=600.0  # 10 minutes timeout
+                                )
+                                agent_engine_endpoint = agent_result["endpoint_url"]
+                                print(f"Successfully created and registered agent for existing user {uid}. Endpoint: {agent_engine_endpoint}")
+                            except asyncio.TimeoutError:
+                                print(f"Agent Engine creation timed out for existing user {uid}. Continuing without agent.")
+                                agent_engine_endpoint = None
+                            except Exception as e:
+                                print(f"Warning: Failed to create/register agent for existing user {uid}: {e}")
+                                print(f"Error type: {type(e)}")
+                                import traceback
+                                print(f"Full traceback: {traceback.format_exc()}")
+                                # Continue with user profile creation even if agent creation fails
+                                # The user can still use the system, just without a personalized agent
+                                agent_engine_endpoint = None
+                        elif settings.VERTEX_AI_AGENT_ENGINE_SKIP_CREATION:
+                            print(f"Agent Engine creation is skipped (VERTEX_AI_AGENT_ENGINE_SKIP_CREATION=true). Skipping agent creation for existing user {uid}")
+                        else:
+                            print(f"Agent Engine is disabled. Skipping agent creation for existing user {uid}")
+                        
                         # Create user profile in Firestore
                         print(f"Attempting to create user profile in Firestore for UID: {uid}")
                         created_user_profile = await UserService.create_user_in_firestore(
@@ -66,6 +110,7 @@ async def signup_new_user(user_data: UserCreate):
                             user_email=user_data.email,
                             user_data_dict=user_profile_data,
                             prompt=prompt,
+                            agent_engine_endpoint=agent_engine_endpoint,  # Pass the endpoint URL
                             db_client=db
                         )
                         
@@ -91,22 +136,31 @@ async def signup_new_user(user_data: UserCreate):
                         )
             except auth.UserNotFoundError:
                 # This shouldn't happen if we got the "Email already registered" error
+                print(f"UserNotFoundError: Email {user_data.email} was reported as already registered but not found in Firebase")
+                # This indicates a Firebase configuration issue or the user was deleted
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered but user not found in Firebase."
+                    detail="Email registration failed due to Firebase configuration issue. Please try again or contact support."
                 )
             except Exception as signin_error:
-                print(f"Error signing in existing user: {signin_error}")
+                print(f"Error checking existing user: {signin_error}")
+                print(f"Error type: {type(signin_error)}")
+                import traceback
+                print(f"Full traceback: {traceback.format_exc()}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to sign in existing user: {str(signin_error)}"
+                    detail=f"Failed to check existing user status: {str(signin_error)}"
                 )
         else:
             # Re-raise other HTTPException to let FastAPI handle it
+            print(f"Re-raising HTTPException: {e.detail}")
             raise e
     except Exception as e:
         # Catch any other unexpected errors during signup
         print(f"Unexpected error during signup: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred during user registration: {str(e)}"

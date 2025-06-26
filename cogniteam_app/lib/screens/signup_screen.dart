@@ -52,17 +52,55 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           // mbti, company, etc., can be added here
         );
 
+        print('Attempting to sign up user: ${userCreationData.email}');
         await ref
             .read(authStateNotifierProvider.notifier)
             .signUp(userCreationData);
 
+        print('Sign up completed successfully');
         // GoRouter's redirect logic should handle navigation to home upon successful signup and login.
         // If not automatically redirecting, can manually push:
         // if (mounted) context.go(AppRoutes.home);
-      } catch (e) {
+
+        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Signup failed: ${e.toString()}')),
+            const SnackBar(
+              content: Text('アカウントが正常に作成されました！'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        print('Sign up error: $e');
+        if (mounted) {
+          String errorMessage = 'Signup failed';
+
+          // Handle specific error cases
+          if (e.toString().contains('Email already registered')) {
+            errorMessage = 'このメールアドレスは既に登録されています。ログイン画面からログインしてください。';
+          } else if (e.toString().contains('Firebase configuration issue')) {
+            errorMessage = 'サーバー設定の問題により登録に失敗しました。しばらく時間をおいて再度お試しください。';
+          } else if (e.toString().contains('network') ||
+              e.toString().contains('connection')) {
+            errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してから再度お試しください。';
+          } else if (e.toString().contains('password') &&
+              e.toString().contains('weak')) {
+            errorMessage = 'パスワードが弱すぎます。より強力なパスワードを設定してください。';
+          } else if (e.toString().contains('email') &&
+              e.toString().contains('invalid')) {
+            errorMessage = '無効なメールアドレスです。正しい形式で入力してください。';
+          } else {
+            errorMessage = '登録に失敗しました。入力内容を確認してから再度お試しください。';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
           );
         }
       } finally {

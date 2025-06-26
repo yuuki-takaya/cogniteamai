@@ -23,6 +23,17 @@ class Settings:
     VERTEX_AI_CHAT_MODEL_NAME: str = os.getenv("VERTEX_AI_CHAT_MODEL_NAME", "gemini-1.0-pro") # Example
     VERTEX_AI_INSIGHT_MODEL_NAME: str = os.getenv("VERTEX_AI_INSIGHT_MODEL_NAME", "text-bison@002") # Example
 
+    # Google AI Agent Settings
+    GOOGLE_AI_AGENT_MODEL: str = os.getenv("GOOGLE_AI_AGENT_MODEL", "gemini-2.0-flash")
+    VERTEX_AI_AGENT_ENGINE_ENABLED: bool = os.getenv("VERTEX_AI_AGENT_ENGINE_ENABLED", "true").lower() == "true"
+    VERTEX_AI_AGENT_ENGINE_SKIP_CREATION: bool = os.getenv("VERTEX_AI_AGENT_ENGINE_SKIP_CREATION", "false").lower() == "true"
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+
+    # Vertex AI Agent Engine Settings (based on Google Cloud documentation)
+    VERTEX_AI_STAGING_BUCKET: str = os.getenv("VERTEX_AI_STAGING_BUCKET", f"gs://{VERTEX_AI_PROJECT}-agent-staging")
+    VERTEX_AI_AGENT_ENGINE_FRAMEWORK: str = os.getenv("VERTEX_AI_AGENT_ENGINE_FRAMEWORK", "langchain")  # Options: langchain, adk, ag2, llama_index
+    VERTEX_AI_AGENT_ENGINE_DEPLOYMENT_TIMEOUT: int = int(os.getenv("VERTEX_AI_AGENT_ENGINE_DEPLOYMENT_TIMEOUT", "300"))  # 5 minutes default
+
     # API keys (should always be from environment variables)
     # EXAMPLE_API_KEY: str = os.getenv("EXAMPLE_API_KEY")
 

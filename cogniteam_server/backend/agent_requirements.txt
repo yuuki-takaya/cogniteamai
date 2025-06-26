@@ -1,0 +1,4 @@
+google-cloud-aiplatform==1.99.0
+google-adk
+vertexai
+cloudpickle==3.1.1 

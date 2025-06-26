@@ -25,6 +25,7 @@ class User(UserBase):
     display_name: str = Field(..., description="User's display name")
     created_at: date = Field(default_factory=date.today, description="Date when the user was created")
     prompt: Optional[str] = Field(None, description="Generated prompt for the user's agent")
+    agent_engine_endpoint: Optional[str] = Field(None, description="Vertex AI Agent Engine endpoint URL")
     # Add other fields as needed (e.g., profile picture URL, preferences, etc.)
 
     class Config:

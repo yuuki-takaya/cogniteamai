@@ -228,14 +228,21 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<AppUser?>> {
     final authService =
         _ref.read(authServiceProvider); // Use _ref passed in constructor
     try {
+      print(
+          "AuthStateNotifier: Starting signUp for email: ${userCreationData.email}");
       state = const AsyncValue.loading();
       final appUser =
           await authService.signUp(userCreationData: userCreationData);
+      print(
+          "AuthStateNotifier: signUp completed successfully for user: ${appUser.userId}");
       // After successful signup, Firebase auth state listener should pick up the new user
       // and trigger profile fetch. Or, we can set it directly.
       _firebaseUser = authService.currentUser; // Update current Firebase user
       state = AsyncValue.data(appUser);
+      print("AuthStateNotifier: State updated with new user profile");
     } catch (e, stack) {
+      print("AuthStateNotifier: signUp error: $e");
+      print("AuthStateNotifier: signUp stack trace: $stack");
       state = AsyncValue.error(e, stack);
       // Rethrow to allow UI to catch and display specific error
       rethrow;

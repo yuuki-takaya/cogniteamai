@@ -1,15 +1,9 @@
 fastapi
-uvicorn[standard] # For running the server, [standard] includes websockets, etc.
-pydantic[email] # For data validation, [email] for EmailStr
-python-dotenv # For loading .env files
-firebase-admin # For Firebase Admin SDK
-google-cloud-aiplatform # For Vertex AI
-
-# For JWTs if implementing custom tokens (not solely relying on Firebase ID tokens)
-# python-jose[cryptography]
-# passlib[bcrypt] # For password hashing if storing passwords directly (not with Firebase Auth)
-
-# Add other dependencies as needed
-# Example:
-# requests # If making HTTP requests to other services
-# cryptography # For any custom encryption needs
+uvicorn[standard]
+pydantic[email]
+python-dotenv
+firebase-admin
+google-cloud-aiplatform[agent_engines,adk]>=1.88.0
+google-generativeai
+google-adk
+cloudpickle==3.1.1

@@ -50,15 +50,24 @@ class UserService:
         prompt_lines.append("\nBased on this profile, engage in conversations naturally, reflecting these traits and background.")
         prompt_lines.append("Your responses should be consistent with this persona. Maintain this persona throughout the conversation.")
         return "\n".join(prompt_lines)
+    @staticmethod
+    async def create_remote_agent_in_agentengine(user_email: str, db_client) -> dict | None:
+        """
+        Fetches a user profile from Firestore by user_email.
+        Returns user data as a dictionary if found, None otherwise.
+        """
+        users_collection = db_client.collection('users')
+        doc = users_collection.where('email', '==', user_email).get()
 
     @staticmethod
-    async def create_user_in_firestore(user_id: str, user_email:str, user_data_dict: dict, prompt: str, db_client) -> User | None:
+    async def create_user_in_firestore(user_id: str, user_email:str, user_data_dict: dict, prompt: str, agent_engine_endpoint: str = None, db_client = None) -> User | None:
         """
         Creates a user profile document in Firestore.
         user_id: Firebase UID.
         user_email: User's email.
         user_data_dict: Dictionary of user profile data (from UserCreate model, excluding password).
         prompt: Generated prompt string.
+        agent_engine_endpoint: Vertex AI Agent Engine endpoint URL (optional).
         db_client: Firestore client instance.
         Returns a Pydantic User model instance if successful, None otherwise.
         """
@@ -66,6 +75,7 @@ class UserService:
         print(f"UserService: User email: {user_email}")
         print(f"UserService: User data dict: {user_data_dict}")
         print(f"UserService: Prompt length: {len(prompt)}")
+        print(f"UserService: Agent Engine Endpoint: {agent_engine_endpoint}")
         
         users_collection = db_client.collection('users')
         try:
@@ -85,6 +95,7 @@ class UserService:
                 "section": user_data_dict.get("section"),
                 "role": user_data_dict.get("role"),
                 "prompt": prompt,
+                "agent_engine_endpoint": agent_engine_endpoint, # Add the endpoint URL
                 "created_at": date.today().isoformat(), # Add created_at field
                 # Add any other fields from User model that should be initialized
                 # "created_at": firestore.SERVER_TIMESTAMP, # Optional: server-side timestamp
@@ -154,6 +165,14 @@ class UserService:
         except Exception as e:
             print(f"Error fetching user {user_id} from Firestore: {e}")
             return None
+        
+    @staticmethod
+    async def update_remote_agent_in_agentengine(user_email: str, db_client) -> dict | None:
+        """
+        Fetches a user profile from Firestore by user_email.
+        Returns user data as a dictionary if found, None otherwise.
+        """
+        users_collection = db_client.collection('users')
 
     @staticmethod
     async def update_user_in_firestore(user_id: str, update_data_dict: dict, db_client) -> User | None:
