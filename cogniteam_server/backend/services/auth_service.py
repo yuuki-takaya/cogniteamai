@@ -1,8 +1,8 @@
 from firebase_admin import auth, firestore
-from models import UserCreate, User # Pydantic models
-from services.user_service import UserService
+from ..models import UserCreate, User # Pydantic models
+from .user_service import UserService
 from fastapi import HTTPException, status
-from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from ..utils.firebase_setup import initialize_firebase_admin # Ensure initialized
 
 # Ensure Firebase is initialized before this module is heavily used.
 # Typically, initialization happens at app startup.
@@ -10,16 +10,17 @@ from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
 # However, db and auth client are typically requested dynamically within methods.
 
 class AuthService:
+    def __init__(self, db_client: firestore.client):
+        self.db = db_client
+        self.user_service = UserService(db_client) # Instantiate UserService here
 
-    # db = firestore.client() # Get Firestore client instance
-
-    @staticmethod
-    async def register_new_user(user_data: UserCreate) -> User:
+    # register_new_user becomes an instance method
+    async def register_new_user(self, user_data: UserCreate) -> User:
         """
         Registers a new user in Firebase Authentication and then saves their profile to Firestore.
         """
-        initialize_firebase_admin() # Ensure it's initialized, though ideally done once at startup
-        db = firestore.client() # Get Firestore client instance
+        # initialize_firebase_admin() # Should be done at startup, not per call
+        # db = self.db # Use instance db client
 
         try:
             firebase_user_record = auth.create_user(
@@ -44,18 +45,17 @@ class AuthService:
         # Prepare user data for Firestore, excluding password
         user_profile_data = user_data.model_dump(exclude={"password"})
 
-        # Generate prompt (this might be better placed in UserService or called by it)
-        prompt = UserService.generate_prompt_from_user_data(user_profile_data)
+        # Generate prompt using the user_service instance
+        prompt = self.user_service.generate_prompt_from_user_data(user_profile_data)
 
         try:
-            # Create user profile in Firestore using UserService
-            # The UserService.create_user_in_firestore should return a Pydantic User model instance or dict
-            created_user_profile = await UserService.create_user_in_firestore(
+            # Create user profile in Firestore using the user_service instance
+            created_user_profile = await self.user_service.create_user_in_firestore(
                 user_id=uid,
-                user_email=user_data.email, # Pass email to be stored in Firestore user doc
-                user_data_dict=user_profile_data, # Pass the full Pydantic model data as dict
-                prompt=prompt,
-                db_client=db # Pass the Firestore client
+                user_email=user_data.email,
+                user_data_dict=user_profile_data,
+                prompt=prompt
+                # db_client is handled by self.user_service internally now
             )
             if not created_user_profile:
                 # Rollback: Delete the user from Firebase Authentication if Firestore profile creation fails
@@ -86,14 +86,14 @@ class AuthService:
                 detail=f"Could not store user profile in Firestore: {e}"
             )
 
-    @staticmethod
+    @staticmethod # This method does not require instance state (self) or db access
     async def verify_firebase_id_token(id_token: str) -> dict:
         """
         Verifies a Firebase ID token.
         Returns the decoded token (which includes user UID, email, etc.) if valid.
         Raises HTTPException if invalid.
         """
-        initialize_firebase_admin() # Ensure initialized
+        # initialize_firebase_admin() # Should be done at startup
         try:
             decoded_token = auth.verify_id_token(id_token)
             return decoded_token
@@ -113,17 +113,12 @@ class AuthService:
     # So, a specific "login" method here might just be a wrapper around verify_firebase_id_token if the goal is just to validate.
     # Or it could fetch user details from Firestore after validation.
 
-    @staticmethod
-    async def get_user_by_firebase_uid(uid: str, db_client=None) -> User | None:
+    async def get_user_by_firebase_uid(self, uid: str) -> User | None:
         """
-        Helper to get user from Firestore by Firebase UID.
-        This might be better suited in UserService but placed here if auth logic needs it directly.
+        Helper to get user from Firestore by Firebase UID using the UserService instance.
         """
-        if not db_client:
-            initialize_firebase_admin()
-            db_client = firestore.client()
-
-        user_dict = await UserService.get_user_by_id(uid, db_client)
+        # db_client is handled by self.user_service
+        user_dict = await self.user_service.get_user_by_id(uid)
         if user_dict:
             return User(**user_dict)
         return None
@@ -142,3 +137,4 @@ class AuthService:
 #     to_encode.update({"exp": expire})
 #     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 #     return encoded_jwt
+```

@@ -1,11 +1,12 @@
+import 'package:flutter/foundation.dart'; // For @required, or use 'meta' package
+
 // Corresponds to UserResponse in the backend
 class AppUser {
   final String userId; // Firebase UID
   final String email;
   final String name;
   final String sex;
-  final DateTime
-      birthDate; // Store as DateTime, convert from/to ISO string for API
+  final DateTime birthDate; // Store as DateTime, convert from/to ISO string for API
   final String? mbti;
   final String? company;
   final String? division;
@@ -52,8 +53,7 @@ class AppUser {
       'email': email,
       'name': name,
       'sex': sex,
-      'birth_date':
-          birthDate.toIso8601String().split('T').first, // Send only YYYY-MM-DD
+      'birth_date': birthDate.toIso8601String().split('T').first, // Send only YYYY-MM-DD
       'mbti': mbti,
       'company': company,
       'division': division,
@@ -67,7 +67,7 @@ class AppUser {
   // For UserCreate model on signup (subset of fields, plus password)
   // Password is not part of this model, handled separately in forms/services.
   Map<String, dynamic> toJsonForSignup() {
-    return {
+     return {
       // 'email': email, // email is part of UserCreate, handled by auth_service
       'name': name,
       'sex': sex,
@@ -81,6 +81,7 @@ class AppUser {
       // Prompt is generated backend, password is not sent in this map
     };
   }
+
 
   AppUser copyWith({
     String? userId,
@@ -174,3 +175,4 @@ class UserCreationData {
     };
   }
 }
+```

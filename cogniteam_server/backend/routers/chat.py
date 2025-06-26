@@ -1,11 +1,11 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from firebase_admin import firestore, auth # For auth exceptions, db client
 
-from services.chat_service import ChatService
-from services.auth_service import AuthService # For token verification
-from services.chat_group_service import ChatGroupService # Added import
-from utils.firebase_setup import initialize_firebase_admin
-from models import User # For type hinting if needed
+from ..services.chat_service import ChatService
+from ..services.auth_service import AuthService # For token verification
+from ..services.chat_group_service import ChatGroupService # Added import
+from ..utils.firebase_setup import initialize_firebase_admin
+from ..models import User # For type hinting if needed
 
 router = APIRouter(
     prefix="/ws", # WebSocket specific prefix
@@ -95,3 +95,4 @@ async def websocket_chat_endpoint(
         except Exception:
             # Websocket might already be closed
             pass
+```

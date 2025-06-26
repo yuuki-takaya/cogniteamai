@@ -51,8 +51,7 @@ class _EditMyAgentScreenState extends ConsumerState<EditMyAgentScreen> {
     } else {
       // If user data is not available (should not happen if screen is protected)
       // Potentially fetch it or show error. For now, assume it's available.
-      print(
-          "EditMyAgentScreen: AppUser is null, form may not populate correctly.");
+      print("EditMyAgentScreen: AppUser is null, form may not populate correctly.");
     }
     // Optionally fetch fresh prompt if needed, though AppUser should be up-to-date
     // _fetchPrompt();
@@ -61,8 +60,7 @@ class _EditMyAgentScreenState extends ConsumerState<EditMyAgentScreen> {
   void _populateFormFields(AppUser user) {
     _nameController.text = user.name;
     _sexController.text = user.sex;
-    _birthDateController.text =
-        user.birthDate.toIso8601String().split('T').first;
+    _birthDateController.text = user.birthDate.toIso8601String().split('T').first;
     _mbtiController.text = user.mbti ?? '';
     _companyController.text = user.company ?? '';
     _divisionController.text = user.division ?? '';
@@ -74,9 +72,7 @@ class _EditMyAgentScreenState extends ConsumerState<EditMyAgentScreen> {
   Future<void> _fetchPrompt() async {
     setState(() => _isFetchingPrompt = true);
     try {
-      final prompt = await ref
-          .read(authStateNotifierProvider.notifier)
-          .fetchUserAgentPrompt();
+      final prompt = await ref.read(authStateNotifierProvider.notifier).fetchUserAgentPrompt();
       if (mounted) {
         setState(() {
           _currentPrompt = prompt;
@@ -105,8 +101,7 @@ class _EditMyAgentScreenState extends ConsumerState<EditMyAgentScreen> {
             birthDate = DateTime.parse(_birthDateController.text);
           } catch (e) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Invalid date format. Please use YYYY-MM-DD.')),
+              const SnackBar(content: Text('Invalid date format. Please use YYYY-MM-DD.')),
             );
             setState(() => _isLoading = false);
             return;
@@ -117,40 +112,24 @@ class _EditMyAgentScreenState extends ConsumerState<EditMyAgentScreen> {
           name: _nameController.text.trim(),
           sex: _sexController.text.trim(),
           birthDate: birthDate,
-          mbti: _mbtiController.text.trim().isEmpty
-              ? null
-              : _mbtiController.text.trim(),
-          company: _companyController.text.trim().isEmpty
-              ? null
-              : _companyController.text.trim(),
-          division: _divisionController.text.trim().isEmpty
-              ? null
-              : _divisionController.text.trim(),
-          department: _departmentController.text.trim().isEmpty
-              ? null
-              : _departmentController.text.trim(),
-          section: _sectionController.text.trim().isEmpty
-              ? null
-              : _sectionController.text.trim(),
-          role: _roleController.text.trim().isEmpty
-              ? null
-              : _roleController.text.trim(),
+          mbti: _mbtiController.text.trim().isEmpty ? null : _mbtiController.text.trim(),
+          company: _companyController.text.trim().isEmpty ? null : _companyController.text.trim(),
+          division: _divisionController.text.trim().isEmpty ? null : _divisionController.text.trim(),
+          department: _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
+          section: _sectionController.text.trim().isEmpty ? null : _sectionController.text.trim(),
+          role: _roleController.text.trim().isEmpty ? null : _roleController.text.trim(),
         );
 
-        await ref
-            .read(authStateNotifierProvider.notifier)
-            .updateUserProfile(updateData);
+        await ref.read(authStateNotifierProvider.notifier).updateUserProfile(updateData);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Profile updated successfully! Prompt may have been regenerated.')),
+            const SnackBar(content: Text('Profile updated successfully! Prompt may have been regenerated.')),
           );
           // Refresh prompt display after update
           final updatedUser = ref.read(appUserProvider);
           if (updatedUser != null) {
-            _currentPrompt = updatedUser.prompt;
+             _currentPrompt = updatedUser.prompt;
           }
         }
       } catch (e) {
@@ -194,111 +173,70 @@ class _EditMyAgentScreenState extends ConsumerState<EditMyAgentScreen> {
       }
     });
 
-    final appUser =
-        ref.watch(appUserProvider); // For initial build and prompt display
+    final appUser = ref.watch(appUserProvider); // For initial build and prompt display
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit My Agent Profile')),
       body: appUser == null
-          ? const Center(child: Text("Loading user data or not logged in..."))
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: <Widget>[
-                    Text("User ID: ${appUser.userId}",
-                        style: Theme.of(context).textTheme.bodySmall),
-                    Text("Email: ${appUser.email}",
-                        style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                        controller: _nameController,
-                        decoration:
-                            const InputDecoration(labelText: 'Full Name'),
-                        validator: (v) => v!.isEmpty ? 'Required' : null),
-                    TextFormField(
-                        controller: _sexController,
-                        decoration: const InputDecoration(labelText: 'Sex'),
-                        validator: (v) => v!.isEmpty ? 'Required' : null),
-                    TextFormField(
-                      controller: _birthDateController,
-                      decoration: const InputDecoration(
-                          labelText: 'Birth Date (YYYY-MM-DD)'),
-                      keyboardType: TextInputType.datetime,
-                      validator: (v) {
-                        if (v!.isEmpty) return 'Required';
-                        try {
-                          DateTime.parse(v);
-                          return null;
-                        } catch (e) {
-                          return 'Invalid date';
-                        }
-                      },
-                      onTap: () async {
-                        FocusScope.of(context).requestFocus(FocusNode());
-                        DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate:
-                                DateTime.tryParse(_birthDateController.text) ??
-                                    DateTime.now(),
-                            firstDate: DateTime(1900),
-                            lastDate: DateTime.now());
-                        if (picked != null)
-                          _birthDateController.text =
-                              picked.toIso8601String().split('T').first;
-                      },
-                    ),
-                    TextFormField(
-                        controller: _mbtiController,
-                        decoration: const InputDecoration(
-                            labelText: 'MBTI (Optional)')),
-                    TextFormField(
-                        controller: _companyController,
-                        decoration: const InputDecoration(
-                            labelText: 'Company (Optional)')),
-                    TextFormField(
-                        controller: _divisionController,
-                        decoration: const InputDecoration(
-                            labelText: 'Division (Optional)')),
-                    TextFormField(
-                        controller: _departmentController,
-                        decoration: const InputDecoration(
-                            labelText: 'Department (Optional)')),
-                    TextFormField(
-                        controller: _sectionController,
-                        decoration: const InputDecoration(
-                            labelText: 'Section/Team (Optional)')),
-                    TextFormField(
-                        controller: _roleController,
-                        decoration: const InputDecoration(
-                            labelText: 'Role (Optional)')),
-                    const SizedBox(height: 20),
-                    _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: _submitUpdate,
-                            child: const Text('Update Profile')),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    Text("Current Agent Prompt:",
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    _isFetchingPrompt
-                        ? const Center(child: CircularProgressIndicator())
-                        : Container(
-                            padding: const EdgeInsets.all(8.0),
-                            color: Colors.grey[200],
-                            child: Text(_currentPrompt ??
-                                "Prompt not available or not generated yet."),
-                          ),
-                    TextButton(
-                        onPressed: _fetchPrompt,
-                        child: const Text("Refresh Prompt Display")),
-                  ],
-                ),
+        ? const Center(child: Text("Loading user data or not logged in..."))
+        : Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                children: <Widget>[
+                  Text("User ID: ${appUser.userId}", style: Theme.of(context).textTheme.bodySmall),
+                  Text("Email: ${appUser.email}", style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 10),
+
+                  TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full Name'), validator: (v) => v!.isEmpty ? 'Required' : null),
+                  TextFormField(controller: _sexController, decoration: const InputDecoration(labelText: 'Sex'), validator: (v) => v!.isEmpty ? 'Required' : null),
+                  TextFormField(
+                    controller: _birthDateController,
+                    decoration: const InputDecoration(labelText: 'Birth Date (YYYY-MM-DD)'),
+                    keyboardType: TextInputType.datetime,
+                    validator: (v) {
+                      if (v!.isEmpty) return 'Required';
+                      try { DateTime.parse(v); return null; } catch (e) { return 'Invalid date'; }
+                    },
+                    onTap: () async {
+                      FocusScope.of(context).requestFocus(FocusNode());
+                      DateTime? picked = await showDatePicker(context: context, initialDate: DateTime.tryParse(_birthDateController.text) ?? DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime.now());
+                      if (picked != null) _birthDateController.text = picked.toIso8601String().split('T').first;
+                    },
+                  ),
+                  TextFormField(controller: _mbtiController, decoration: const InputDecoration(labelText: 'MBTI (Optional)')),
+                  TextFormField(controller: _companyController, decoration: const InputDecoration(labelText: 'Company (Optional)')),
+                  TextFormField(controller: _divisionController, decoration: const InputDecoration(labelText: 'Division (Optional)')),
+                  TextFormField(controller: _departmentController, decoration: const InputDecoration(labelText: 'Department (Optional)')),
+                  TextFormField(controller: _sectionController, decoration: const InputDecoration(labelText: 'Section/Team (Optional)')),
+                  TextFormField(controller: _roleController, decoration: const InputDecoration(labelText: 'Role (Optional)')),
+
+                  const SizedBox(height: 20),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton(onPressed: _submitUpdate, child: const Text('Update Profile')),
+
+                  const SizedBox(height: 20),
+                  const Divider(),
+                  Text("Current Agent Prompt:", style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  _isFetchingPrompt
+                    ? const Center(child: CircularProgressIndicator())
+                    : Container(
+                        padding: const EdgeInsets.all(8.0),
+                        color: Colors.grey[200],
+                        child: Text(_currentPrompt ?? "Prompt not available or not generated yet."),
+                      ),
+                  TextButton(
+                    onPressed: _fetchPrompt,
+                    child: const Text("Refresh Prompt Display")
+                  ),
+                ],
               ),
             ),
+          ),
     );
   }
 }
+```

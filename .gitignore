@@ -77,3 +77,4 @@ package-lock.json # Or yarn.lock if preferred and not part of project source
 
 # If you have a global .env at the root for any reason
 /.env
+```

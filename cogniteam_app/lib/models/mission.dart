@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 // Corresponds to Mission model in the backend
 class Mission {
   final String missionId;
@@ -52,3 +54,4 @@ class MissionCreationData {
     };
   }
 }
+```

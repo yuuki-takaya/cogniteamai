@@ -17,8 +17,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  final _sexController =
-      TextEditingController(); // Consider DropdownButtonFormField
+  final _sexController = TextEditingController(); // Consider DropdownButtonFormField
   final _birthDateController = TextEditingController(); // Consider DatePicker
 
   // MBTI and Company details - can be added progressively
@@ -36,8 +35,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           birthDate = DateTime.parse(_birthDateController.text);
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Invalid date format. Please use YYYY-MM-DD.')),
+            const SnackBar(content: Text('Invalid date format. Please use YYYY-MM-DD.')),
           );
           setState(() => _isLoading = false);
           return;
@@ -52,13 +50,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           // mbti, company, etc., can be added here
         );
 
-        await ref
-            .read(authStateNotifierProvider.notifier)
-            .signUp(userCreationData);
+        await ref.read(authStateNotifierProvider.notifier).signUp(userCreationData);
 
         // GoRouter's redirect logic should handle navigation to home upon successful signup and login.
         // If not automatically redirecting, can manually push:
         // if (mounted) context.go(AppRoutes.home);
+
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -106,8 +103,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Full Name'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Please enter your name' : null,
+                validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
               ),
               TextFormField(
                 controller: _emailController,
@@ -123,21 +119,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
-                validator: (value) => value!.length < 6
-                    ? 'Password must be at least 6 characters'
-                    : null,
+                validator: (value) => value!.length < 6 ? 'Password must be at least 6 characters' : null,
               ),
               TextFormField(
                 controller: _sexController,
-                decoration: const InputDecoration(
-                    labelText: 'Sex (e.g., Male, Female, Other)'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Please enter your sex' : null,
+                decoration: const InputDecoration(labelText: 'Sex (e.g., Male, Female, Other)'),
+                validator: (value) => value!.isEmpty ? 'Please enter your sex' : null,
               ),
               TextFormField(
                 controller: _birthDateController,
-                decoration:
-                    const InputDecoration(labelText: 'Birth Date (YYYY-MM-DD)'),
+                decoration: const InputDecoration(labelText: 'Birth Date (YYYY-MM-DD)'),
                 keyboardType: TextInputType.datetime,
                 validator: (value) {
                   if (value!.isEmpty) return 'Please enter your birth date';
@@ -150,16 +141,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 },
                 onTap: () async {
                   // Optionally show date picker
-                  FocusScope.of(context)
-                      .requestFocus(FocusNode()); // Hide keyboard
+                  FocusScope.of(context).requestFocus(FocusNode()); // Hide keyboard
                   DateTime? pickedDate = await showDatePicker(
                       context: context,
                       initialDate: DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime.now());
                   if (pickedDate != null) {
-                    _birthDateController.text =
-                        pickedDate.toIso8601String().split('T').first;
+                    _birthDateController.text = pickedDate.toIso8601String().split('T').first;
                   }
                 },
               ),
@@ -181,3 +170,4 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 }
+```

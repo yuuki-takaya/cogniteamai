@@ -1,78 +1,97 @@
-# Service layer for generating communication insights
-# This might use Vertex AI or other NLP models/rules
-# from .chat_group_service import ChatGroupService
-# from google.cloud import aiplatform # Or other NLP libraries
+from firebase_admin import firestore
+from google.cloud import aiplatform
+from typing import List, Dict, Any
 
-# Placeholder for Vertex AI project details if used for insights
-# INSIGHT_VERTEX_AI_PROJECT = "your-gcp-project"
-# INSIGHT_VERTEX_AI_LOCATION = "your-gcp-region"
-# INSIGHT_MODEL_NAME = "text-bison" # Example for text analysis
+from ..config import settings
+from ..models import Insight as InsightModel, Message as MessageModel # Pydantic models
+from .chat_group_service import ChatGroupService
+# from ..utils.firebase_setup import initialize_firebase_admin # Not called directly here
+import uuid
+from datetime import datetime, timezone
 
 class InsightService:
-    # def __init__(self):
-        # Initialize any models or clients if needed
-        # aiplatform.init(project=INSIGHT_VERTEX_AI_PROJECT, location=INSIGHT_VERTEX_AI_LOCATION)
-        # self.insight_model = aiplatform.TextGenerationModel.from_pretrained(INSIGHT_MODEL_NAME)
-        # pass
+    _vertex_ai_initialized = False # Class variable to track Vertex AI initialization
 
-    @staticmethod
-    async def generate_or_get_insights(group_id: str):
-        # This could:
-        # 1. Check if recent insights are already stored in Firestore for this group.
-        # 2. If not, or if they are stale, generate new ones.
+    def __init__(self, db_client: firestore.client, chat_group_service: ChatGroupService):
+        self.db = db_client
+        self.chat_group_service = chat_group_service # Store ChatGroupService instance
+        self.vertex_ai_enabled = False
 
-        # For now, a placeholder generation.
-        # In reality, this would involve fetching chat history and processing it.
+        if not InsightService._vertex_ai_initialized:
+            try:
+                # Attempt to initialize Vertex AI. This should ideally happen once.
+                aiplatform.init(project=settings.VERTEX_AI_PROJECT, location=settings.VERTEX_AI_LOCATION)
+                print(f"Vertex AI initialized for InsightService: {settings.VERTEX_AI_PROJECT} in {settings.VERTEX_AI_LOCATION}")
+                InsightService._vertex_ai_initialized = True
+                self.vertex_ai_enabled = True
+            except Exception as e:
+                # Check if it's because it's already initialized (might depend on SDK version's error type)
+                if "already initialized" in str(e).lower() or (hasattr(aiplatform.initializer, 'global_config') and aiplatform.initializer.global_config.project):
+                    print(f"Vertex AI was already initialized (InsightService). Project: {aiplatform.initializer.global_config.project if hasattr(aiplatform.initializer, 'global_config') else 'Unknown'}")
+                    InsightService._vertex_ai_initialized = True # Ensure flag is set
+                    self.vertex_ai_enabled = True
+                else:
+                    print(f"Failed to initialize Vertex AI in InsightService: {e}. Insight generation may be limited.")
+                    self.vertex_ai_enabled = False # Explicitly set to false if other error
+        else:
+            # If already initialized by another instance or previous call, just confirm status
+            self.vertex_ai_enabled = True if (hasattr(aiplatform.initializer, 'global_config') and aiplatform.initializer.global_config.project) else False
+            if self.vertex_ai_enabled:
+                 print(f"Vertex AI already initialized, confirmed for InsightService. Project: {aiplatform.initializer.global_config.project if hasattr(aiplatform.initializer, 'global_config') else 'Unknown'}")
 
-        # messages = await ChatGroupService.get_messages(group_id, limit=100) # Get a good chunk of history
-        # if not messages:
-        #     return {"insight_text": "Not enough messages to generate insights.", "group_id": group_id}
 
-        # # Simple rule-based insight for placeholder:
-        # num_messages = len(messages)
-        # user_messages = [m for m in messages if not m.get("sender_id","").startswith("agent_")]
-        # agent_messages = [m for m in messages if m.get("sender_id","").startswith("agent_")]
+    async def generate_insight_for_group(self, group_id: str, insight_type: str = "summary") -> InsightModel | None:
+        """
+        Generates a specified type of insight for a chat group.
+        - Fetches chat history for the group using self.chat_group_service.
+        - Uses Vertex AI (placeholder) to generate the insight.
+        - Returns an InsightModel.
+        """
+        chat_history_models: List[MessageModel] = await self.chat_group_service.get_messages_for_group(
+            group_id=group_id,
+            limit=100 # Adjust limit as needed for context
+        )
 
-        # insight_text = (
-        #     f"Basic Insight for Group {group_id}:\n"
-        #     f"- Total messages analyzed: {num_messages}\n"
-        #     f"- User contributions: {len(user_messages)} messages.\n"
-        #     f"- Agent contributions: {len(agent_messages)} messages.\n"
-        # )
+        if not chat_history_models:
+            print(f"No chat history found for group {group_id}. Cannot generate insight.")
+            return InsightModel(
+                insight_id=str(uuid.uuid4()),
+                group_id=group_id,
+                insight_text="Not enough data to generate insights. The chat history is empty.",
+                insight_type="no_data",
+                generated_at=datetime.now(timezone.utc)
+            )
 
-        # If using Vertex AI for summarization or more complex insights:
-        # full_chat_text = "\n".join([f"{m['sender_id']}: {m['content']}" for m in messages])
-        # prompt = f"Analyze the following conversation from group {group_id} and provide communication insights, focusing on collaboration, mission progress (if any), and potential areas for improvement:\n\n{full_chat_text}\n\nInsights:"
-        # try:
-        #     response = self.insight_model.predict(prompt, max_output_tokens=256)
-        #     insight_text = response.text
-        # except Exception as e:
-        #     print(f"Error generating insight with Vertex AI: {e}")
-        #     insight_text = f"Could not generate detailed insight due to an error. Basic stats: {num_messages} total messages."
+        full_chat_text = "\n".join(
+            [f"{msg.sender_name or msg.sender_id}: {msg.content}" for msg in chat_history_models]
+        )
 
-        # from datetime import datetime, timezone # For placeholder
-        # generated_at = datetime.now(timezone.utc).isoformat()
+        insight_text_result = f"Placeholder insight ({insight_type}) for group {group_id} based on recent chat activity."
 
-        # Store this insight (e.g., in chat_group document or a separate 'insights' collection)
-        # insight_data = {
-        #     "insight_id": str(uuid.uuid4()), # Generate unique ID
-        #     "group_id": group_id,
-        #     "insight_text": insight_text,
-        #     "generated_at": generated_at,
-        #     "source_message_count": num_messages
-        # }
-        # db.collection('insights').document(insight_data["insight_id"]).set(insight_data)
-        # Or update the group document:
-        # ChatGroupService.chat_groups_collection.document(group_id).update({"last_insight": insight_data})
+        if self.vertex_ai_enabled:
+            try:
+                if insight_type == "summary":
+                    insight_text_result = f"Summary of the last {len(chat_history_models)} messages in group {group_id}: Participants discussed various topics. (Vertex AI summary pending)."
+                elif insight_type == "sentiment":
+                    insight_text_result = f"Overall sentiment of the conversation in group {group_id} appears to be neutral. (Vertex AI sentiment analysis pending)."
+                elif insight_type == "keywords":
+                    keywords = list(set(word for msg in chat_history_models for word in msg.content.lower().split() if len(word) > 4))[:5]
+                    insight_text_result = f"Potential keywords in group {group_id}: {', '.join(keywords)}. (Vertex AI keyword extraction pending)."
+                else:
+                    insight_text_result = f"A general observation for group {group_id}: The conversation is active. (Vertex AI insight pending)."
+            except Exception as e:
+                print(f"Error during (placeholder) Vertex AI call for insight generation (group {group_id}, type {insight_type}): {e}")
+                insight_text_result = f"Could not generate insight due to a processing error." # More generic error for user
+        else:
+            print(f"Vertex AI not enabled. Returning placeholder insight for group {group_id}.")
 
-        print(f"Placeholder: Generating/getting insights for group {group_id}")
-        from datetime import datetime, timezone # For placeholder
-        import uuid # For placeholder
-        return {
-            "insight_id": str(uuid.uuid4()),
-            "group_id": group_id,
-            "insight_text": f"Placeholder insight for group {group_id}: Activity seems normal. More detailed analysis would go here.",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "source_message_count": 10 # dummy
-        }
-pass
+        generated_insight = InsightModel(
+            insight_id=str(uuid.uuid4()),
+            group_id=group_id,
+            insight_text=insight_text_result,
+            insight_type=insight_type, # This will be "no_data" if chat_history_models was empty initially
+            generated_at=datetime.now(timezone.utc)
+        )
+
+        return generated_insight
+```

@@ -37,8 +37,7 @@ class HomeScreen extends ConsumerWidget {
                   Text('Email: ${user.email}'),
                   Text('User ID: ${user.userId}'),
                   const SizedBox(height: 20),
-                  Text(
-                      'Current Prompt (from User object): ${user.prompt ?? "Not set"}'),
+                  Text('Current Prompt (from User object): ${user.prompt ?? "Not set"}'),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
@@ -49,8 +48,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: () {
-                      context.push(AppRoutes
-                          .chatGroupsList); // Use push to keep home in stack
+                      context.push(AppRoutes.chatGroupsList); // Use push to keep home in stack
                     },
                     child: const Text('View My Chat Groups'),
                   ),
@@ -70,9 +68,7 @@ class HomeScreen extends ConsumerWidget {
               const Text('Error loading user profile:'),
               Text(error.toString()),
               ElevatedButton(
-                onPressed: () => ref
-                    .read(authStateNotifierProvider.notifier)
-                    .refreshUserProfile(),
+                onPressed: () => ref.read(authStateNotifierProvider.notifier).refreshUserProfile(),
                 child: const Text("Try Again"),
               )
             ],
@@ -82,3 +78,4 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
+```

@@ -1,62 +1,123 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
-from firebase_admin import firestore, auth
+from fastapi.security import OAuth2PasswordBearer
+from firebase_admin import firestore
 
-from services.auth_service import AuthService # For token verification logic
-from services.user_service import UserService   # For fetching user profile from Firestore
-from models import User                         # Pydantic User model
-from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from .services.auth_service import AuthService
+from .services.user_service import UserService
+from .services.agent_service import AgentService
+from .services.chat_group_service import ChatGroupService
+from .services.insight_service import InsightService
+from .services.chat_service import ChatService # Import ChatService
+from .models import User
+from .utils.firebase_setup import initialize_firebase_admin
 
-# This scheme will look for an "Authorization" header with a "Bearer" token.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") # tokenUrl is for documentation, not directly used by this dependency if token is passed in header.
+# --- Helper to get Firestore client ---
+_db_client_instance = None
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
-    """
-    Dependency to get the current user based on a Firebase ID token.
-    - Extracts token from "Authorization: Bearer <token>" header.
-    - Verifies the Firebase ID token.
-    - Fetches the user's profile from Firestore.
-    - Returns the Pydantic User model instance.
-    Raises HTTPException if authentication fails or user not found.
-    """
-    initialize_firebase_admin() # Ensure Firebase is initialized
-    db = firestore.client()     # Get Firestore client
+def get_db_client() -> firestore.client:
+    global _db_client_instance
+    if _db_client_instance is None:
+        initialize_firebase_admin()
+        _db_client_instance = firestore.client()
+    return _db_client_instance
 
+# --- Service Dependencies ---
+_user_service_singleton = None
+def get_user_service(db: firestore.client = Depends(get_db_client)) -> UserService:
+    global _user_service_singleton
+    if _user_service_singleton is None:
+        _user_service_singleton = UserService(db_client=db)
+    return _user_service_singleton
+
+_auth_service_singleton = None
+def get_auth_service(db: firestore.client = Depends(get_db_client)) -> AuthService:
+    global _auth_service_singleton
+    if _auth_service_singleton is None:
+        _auth_service_singleton = AuthService(db_client=db)
+    return _auth_service_singleton
+
+_agent_service_singleton = None
+def get_agent_service(db: firestore.client = Depends(get_db_client)) -> AgentService:
+    global _agent_service_singleton
+    if _agent_service_singleton is None:
+        _agent_service_singleton = AgentService(db_client=db)
+    return _agent_service_singleton
+
+_chat_group_service_singleton = None
+def get_chat_group_service(
+    db: firestore.client = Depends(get_db_client),
+    user_service: UserService = Depends(get_user_service),
+    agent_service: AgentService = Depends(get_agent_service)
+) -> ChatGroupService:
+    global _chat_group_service_singleton
+    if _chat_group_service_singleton is None:
+        _chat_group_service_singleton = ChatGroupService(
+            db_client=db,
+            user_service=user_service,
+            agent_service=agent_service
+        )
+    return _chat_group_service_singleton
+
+_insight_service_singleton = None
+def get_insight_service(
+    db: firestore.client = Depends(get_db_client), # db might be unused if InsightService changes
+    chat_group_service: ChatGroupService = Depends(get_chat_group_service)
+) -> InsightService:
+    global _insight_service_singleton
+    if _insight_service_singleton is None:
+        _insight_service_singleton = InsightService(
+            db_client=db, # Pass db if InsightService constructor still needs it
+            chat_group_service=chat_group_service
+        )
+    return _insight_service_singleton
+
+_chat_service_singleton = None
+def get_chat_service(
+    # db: firestore.client = Depends(get_db_client), # ChatService no longer takes db_client directly
+    chat_group_service: ChatGroupService = Depends(get_chat_group_service),
+    user_service: UserService = Depends(get_user_service),
+    agent_service: AgentService = Depends(get_agent_service)
+) -> ChatService:
+    """Dependency to get a ChatService instance."""
+    global _chat_service_singleton
+    if _chat_service_singleton is None:
+        _chat_service_singleton = ChatService(
+            # db_client=db, # Removed
+            chat_group_service=chat_group_service,
+            user_service=user_service,
+            agent_service=agent_service
+        )
+    return _chat_service_singleton
+
+# --- Authentication Dependencies ---
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    user_service: UserService = Depends(get_user_service)
+) -> User:
     try:
         decoded_token = await AuthService.verify_firebase_id_token(token)
         uid = decoded_token.get("uid")
         if not uid:
-            # This should ideally be caught by verify_firebase_id_token, but as a safeguard:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid ID token: UID not found after verification.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-
-        # Fetch user from Firestore using the UID
-        user_data_dict = await UserService.get_user_by_id(uid, db_client=db)
-
+        user_data_dict = await user_service.get_user_by_id(uid)
         if not user_data_dict:
-            # This case might happen if a Firebase Auth user exists but their Firestore profile is missing.
-            # This indicates an inconsistency.
-            email = decoded_token.get("email", "N/A") # Get email from token for error message
+            email = decoded_token.get("email", "N/A")
             print(f"User with UID {uid} (Email: {email}) authenticated via Firebase, but profile not found in Firestore.")
-            # Depending on policy, could attempt to auto-create profile here if sufficient info in token.
-            # For now, treat as an error requiring profile to exist.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User profile not found for authenticated user (UID: {uid}). The user may exist in Firebase Auth but not in the application's database.",
-                headers={"WWW-Authenticate": "Bearer"}, # Added header for consistency
+                detail=f"User profile not found for authenticated user (UID: {uid}).",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-
-        # Assuming user_data_dict can be parsed into User model
         return User(**user_data_dict)
-
     except HTTPException as e:
-        # Re-raise HTTPExceptions (e.g., from token verification or user not found)
         raise e
     except Exception as e:
-        # Catch-all for other unexpected errors
         print(f"Unexpected error in get_current_user dependency: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -65,15 +126,5 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         )
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
-    """
-    Placeholder for a dependency that gets the current user and checks if they are "active".
-    For now, it just returns the current_user.
-    You could extend User model and this function to support active/inactive states.
-    """
-    # if not current_user.is_active: # Example if User model had an is_active field
-    #     raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
-# Example of how get_current_user_id might be implemented if needed:
-# async def get_current_user_id(current_user: User = Depends(get_current_user)) -> str:
-#    return current_user.user_id
+```

@@ -33,10 +33,10 @@ class Settings:
 
     # CORS settings (Cross-Origin Resource Sharing)
     # List of allowed origins. Use ["*"] for allowing all, but be specific for production.
-    ALLOWED_ORIGINS: list[str] = os.getenv("ALLOWED_ORIGINS", "*").split(',')
+    ALLOWED_ORIGINS: list[str] = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(',')
     # If ALLOWED_ORIGINS is not set or empty, default to a restrictive or common dev setup.
     if not ALLOWED_ORIGINS or ALLOWED_ORIGINS == ['']:
-        ALLOWED_ORIGINS = ["*"] # Allow all origins for development
+        ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"] # Default for typical Flutter web dev
 
 
 settings = Settings()

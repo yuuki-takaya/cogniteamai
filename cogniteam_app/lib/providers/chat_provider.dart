@@ -43,8 +43,7 @@ class ChatScreenState {
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
       isSettingMission: isSettingMission ?? this.isSettingMission,
       isWebSocketConnected: isWebSocketConnected ?? this.isWebSocketConnected,
-      errorMessage:
-          clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
     );
   }
 }
@@ -58,8 +57,7 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
   StreamSubscription? _wsConnectionStatusSubscription;
 
   ChatScreenNotifier(this.groupId, this._chatGroupService, this._ref)
-      : _webSocketService = WebSocketService(
-            groupId), // Each notifier instance gets its own WebSocketService
+      : _webSocketService = WebSocketService(groupId), // Each notifier instance gets its own WebSocketService
         super(ChatScreenState()) {
     _initialize();
   }
@@ -68,23 +66,20 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
     state = state.copyWith(isLoadingMessages: true, clearErrorMessage: true);
     try {
       // Fetch initial messages via REST
-      final initialMessages =
-          await _chatGroupService.getMessagesForGroup(groupId, limit: 50);
+      final initialMessages = await _chatGroupService.getMessagesForGroup(groupId, limit: 50);
       // Fetch current mission (if any) - this needs a method in ChatGroupService
       // final currentMission = await _chatGroupService.getActiveMissionForGroup(groupId);
       // For now, mission fetching is not implemented in ChatGroupService on frontend.
 
-      state =
-          state.copyWith(messages: initialMessages, isLoadingMessages: false);
+      state = state.copyWith(messages: initialMessages, isLoadingMessages: false);
 
       // Connect WebSocket
       await _webSocketService.connect();
-      _wsConnectionStatusSubscription =
-          _webSocketService.connectionStatus.listen((isConnected) {
+      _wsConnectionStatusSubscription = _webSocketService.connectionStatus.listen((isConnected) {
         state = state.copyWith(isWebSocketConnected: isConnected);
         if (!isConnected) {
           // Handle disconnection, maybe try to reconnect or show error
-          state = state.copyWith(errorMessage: "WebSocket disconnected.");
+           state = state.copyWith(errorMessage: "WebSocket disconnected.");
         }
       });
 
@@ -94,21 +89,18 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
           state = state.copyWith(messages: [...state.messages, newMessage]);
         }
       }, onError: (error) {
-        state = state.copyWith(
-            errorMessage: "WebSocket error: $error",
-            isWebSocketConnected: false);
+        state = state.copyWith(errorMessage: "WebSocket error: $error", isWebSocketConnected: false);
       });
+
     } catch (e, stack) {
-      state =
-          state.copyWith(isLoadingMessages: false, errorMessage: e.toString());
+      state = state.copyWith(isLoadingMessages: false, errorMessage: e.toString());
       print("ChatScreenNotifier Init Error: $e \n$stack");
     }
   }
 
   Future<void> sendMessage(String content) async {
     if (!_webSocketService.isConnected) {
-      state = state.copyWith(
-          errorMessage: "Not connected to chat. Please try again.");
+      state = state.copyWith(errorMessage: "Not connected to chat. Please try again.");
       // Attempt to reconnect or prompt user
       await _webSocketService.connect();
       return;
@@ -122,8 +114,7 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
       // No need to manually add to state.messages here if relying on broadcast.
       state = state.copyWith(isSendingMessage: false);
     } catch (e) {
-      state =
-          state.copyWith(isSendingMessage: false, errorMessage: e.toString());
+      state = state.copyWith(isSendingMessage: false, errorMessage: e.toString());
     }
   }
 
@@ -131,20 +122,17 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
     state = state.copyWith(isSettingMission: true, clearErrorMessage: true);
     try {
       final missionData = MissionCreationData(missionText: missionText);
-      final newMission =
-          await _chatGroupService.setMissionForGroup(groupId, missionData);
-      state =
-          state.copyWith(isSettingMission: false, currentMission: newMission);
+      final newMission = await _chatGroupService.setMissionForGroup(groupId, missionData);
+      state = state.copyWith(isSettingMission: false, currentMission: newMission);
     } catch (e) {
-      state =
-          state.copyWith(isSettingMission: false, errorMessage: e.toString());
+      state = state.copyWith(isSettingMission: false, errorMessage: e.toString());
       rethrow;
     }
   }
 
   // Method to fetch older messages (pagination) - TBD
   Future<void> fetchOlderMessages() async {
-    // Logic for pagination
+      // Logic for pagination
   }
 
   @override
@@ -152,17 +140,16 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
     print("Disposing ChatScreenNotifier for group $groupId");
     _wsMessageSubscription?.cancel();
     _wsConnectionStatusSubscription?.cancel();
-    _webSocketService
-        .dispose(); // Important to close WebSocket connection and stream controllers
+    _webSocketService.dispose(); // Important to close WebSocket connection and stream controllers
     super.dispose();
   }
 }
 
 // AutoDispose keeps the provider alive only while it's being listened to.
 // .family allows passing the groupId to the provider.
-final chatScreenNotifierProvider = StateNotifierProvider.autoDispose
-    .family<ChatScreenNotifier, ChatScreenState, String>((ref, groupId) {
+final chatScreenNotifierProvider = StateNotifierProvider.autoDispose.family<ChatScreenNotifier, ChatScreenState, String>((ref, groupId) {
   final chatGroupService = ref.watch(chatGroupServiceProvider);
   // WebSocketService is instantiated directly by ChatScreenNotifier.
   return ChatScreenNotifier(groupId, chatGroupService, ref);
 });
+```

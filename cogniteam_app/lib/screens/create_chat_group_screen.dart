@@ -10,8 +10,7 @@ class CreateChatGroupScreen extends ConsumerStatefulWidget {
   const CreateChatGroupScreen({super.key});
 
   @override
-  ConsumerState<CreateChatGroupScreen> createState() =>
-      _CreateChatGroupScreenState();
+  ConsumerState<CreateChatGroupScreen> createState() => _CreateChatGroupScreenState();
 }
 
 class _CreateChatGroupScreenState extends ConsumerState<CreateChatGroupScreen> {
@@ -39,39 +38,31 @@ class _CreateChatGroupScreenState extends ConsumerState<CreateChatGroupScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await ref
-          .read(chatGroupCreationNotifierProvider.notifier)
-          .createChatGroup(
+      await ref.read(chatGroupCreationNotifierProvider.notifier).createChatGroup(
             _groupNameController.text.trim(),
             _selectedAgentIds.toList(),
           );
 
       // Check the state of creation
       final creationState = ref.read(chatGroupCreationNotifierProvider);
-      if (creationState is AsyncData &&
-          creationState.value != null &&
-          mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Group "${creationState.value!.groupName}" created successfully!')),
+      if (creationState is AsyncData && creationState.value != null && mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Group "${creationState.value!.groupName}" created successfully!')),
         );
         // Optionally navigate to the new chat group screen or back
         // context.go(AppRoutes.chatScreen, extra: creationState.value!.groupId); // Example
         context.pop(); // Go back to previous screen for now
       } else if (creationState is AsyncError && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Failed to create group: ${creationState.error}')),
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create group: ${creationState.error}')),
         );
       }
-    } catch (e) {
-      // Catch rethrown error from notifier
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+    } catch (e) { // Catch rethrown error from notifier
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to create group: ${e.toString()}')),
         );
-      }
+       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -95,12 +86,10 @@ class _CreateChatGroupScreenState extends ConsumerState<CreateChatGroupScreen> {
               TextFormField(
                 controller: _groupNameController,
                 decoration: const InputDecoration(labelText: 'Group Name'),
-                validator: (value) =>
-                    value!.trim().isEmpty ? 'Group name cannot be empty' : null,
+                validator: (value) => value!.trim().isEmpty ? 'Group name cannot be empty' : null,
               ),
               const SizedBox(height: 20),
-              Text('Select Agents:',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('Select Agents:', style: Theme.of(context).textTheme.titleMedium),
               Expanded(
                 child: allAgentsAsync.when(
                   data: (agents) {
@@ -128,10 +117,8 @@ class _CreateChatGroupScreenState extends ConsumerState<CreateChatGroupScreen> {
                       },
                     );
                   },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) =>
-                      Center(child: Text('Error loading agents: $err')),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Center(child: Text('Error loading agents: $err')),
                 ),
               ),
               const SizedBox(height: 20),
@@ -151,3 +138,4 @@ class _CreateChatGroupScreenState extends ConsumerState<CreateChatGroupScreen> {
     );
   }
 }
+```

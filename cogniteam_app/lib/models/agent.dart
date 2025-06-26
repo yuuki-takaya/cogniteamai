@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 // Corresponds to Agent model in the backend
 class Agent {
   final String agentId;
@@ -45,3 +47,4 @@ class Agent {
     return 'Agent{agentId: $agentId, name: $name}';
   }
 }
+```

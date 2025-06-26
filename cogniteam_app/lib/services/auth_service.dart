@@ -14,11 +14,11 @@ class AuthService {
 
   /// Provides a stream of the current Firebase Authentication user.
   /// Emits null if logged out, or a User object if logged in.
-  Stream<fb_auth.User?> get authStateChanges =>
-      _firebaseAuth.authStateChanges();
+  Stream<fb_auth.User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
   /// Gets the current Firebase User object, or null if not logged in.
   fb_auth.User? get currentUser => _firebaseAuth.currentUser;
+
 
   /// Signs up a new user with Firebase Authentication and then registers them with the backend.
   Future<AppUser> signUp({
@@ -26,8 +26,7 @@ class AuthService {
   }) async {
     try {
       // 1. Create user with Firebase Authentication
-      final fb_auth.UserCredential userCredential =
-          await _firebaseAuth.createUserWithEmailAndPassword(
+      final fb_auth.UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: userCreationData.email,
         password: userCreationData.password,
       );
@@ -79,28 +78,25 @@ class AuthService {
       );
 
       if (response.statusCode == 201 && response.data != null) {
-        final AppUser appUser =
-            AppUser.fromJson(response.data as Map<String, dynamic>);
+        final AppUser appUser = AppUser.fromJson(response.data as Map<String, dynamic>);
 
         // 4. After successful backend registration, sign in the user on the client-side Firebase
         await _firebaseAuth.signInWithEmailAndPassword(
           email: userCreationData.email,
           password: userCreationData.password,
         );
-        print(
-            "Firebase client signed in successfully after backend registration.");
+        print("Firebase client signed in successfully after backend registration.");
         return appUser;
       } else {
-        throw Exception(
-            'Backend user registration failed: ${response.statusMessage} ${response.data}');
+        throw Exception('Backend user registration failed: ${response.statusMessage} ${response.data}');
       }
+
     } on fb_auth.FirebaseAuthException catch (e) {
       print("FirebaseAuthException during signup: ${e.code} - ${e.message}");
       throw Exception('Firebase signup error: ${e.message}');
     } on DioException catch (e) {
       print("DioException during backend signup: ${e.message}");
-      final errorMsg =
-          e.response?.data?['detail'] ?? e.message ?? "Signup failed";
+      final errorMsg = e.response?.data?['detail'] ?? e.message ?? "Signup failed";
       throw Exception('Backend signup error: $errorMsg');
     } catch (e) {
       print("Generic error during signup: $e");
@@ -115,8 +111,7 @@ class AuthService {
   }) async {
     try {
       // 1. Sign in with Firebase Authentication
-      final fb_auth.UserCredential userCredential =
-          await _firebaseAuth.signInWithEmailAndPassword(
+      final fb_auth.UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -127,13 +122,7 @@ class AuthService {
       }
 
       // 2. Get ID token
-      final String? idTokenNullable =
-          await firebaseUser.getIdToken(true); // Force refresh
-
-      if (idTokenNullable == null) {
-        throw Exception('Failed to get ID token from Firebase');
-      }
-      final String idToken = idTokenNullable;
+      final String idToken = await firebaseUser.getIdToken(true); // Force refresh
 
       // 3. Send ID token to backend's /auth/login to get full AppUser profile
       // final api = await _safeApiService; // No longer needed
@@ -147,16 +136,13 @@ class AuthService {
       } else {
         // Attempt to sign out from Firebase if backend login fails to keep consistent state
         await _firebaseAuth.signOut();
-        throw Exception(
-            'Backend login failed: ${response.statusMessage} ${response.data}');
+        throw Exception('Backend login failed: ${response.statusMessage} ${response.data}');
       }
     } on fb_auth.FirebaseAuthException catch (e) {
       print("FirebaseAuthException during signin: ${e.code} - ${e.message}");
       // Common codes: "invalid-email", "user-not-found", "wrong-password", "user-disabled"
       // "INVALID_LOGIN_CREDENTIALS" is common for wrong email/password with recent SDKs
-      if (e.code == 'user-not-found' ||
-          e.code == 'wrong-password' ||
-          e.code.toUpperCase().contains('INVALID_LOGIN_CREDENTIALS')) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code.toUpperCase().contains('INVALID_LOGIN_CREDENTIALS')) {
         throw Exception('Invalid email or password.');
       }
       throw Exception('Firebase sign-in error: ${e.message}');
@@ -164,8 +150,7 @@ class AuthService {
       print("DioException during backend login: ${e.message}");
       // Attempt to sign out from Firebase if backend login fails
       await _firebaseAuth.signOut();
-      final errorMsg =
-          e.response?.data?['detail'] ?? e.message ?? "Login failed";
+      final errorMsg = e.response?.data?['detail'] ?? e.message ?? "Login failed";
       throw Exception('Backend login error: $errorMsg');
     } catch (e) {
       print("Generic error during signin: $e");
@@ -190,45 +175,30 @@ class AuthService {
   /// Retrieves the current AppUser profile from the backend if a user is signed in.
   /// This would typically be called after initial login or on app startup if user is already signed in.
   Future<AppUser?> getCurrentAppUser() async {
-    print("AuthService: getCurrentAppUser() called");
     final fb_auth.User? firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) {
-      print("AuthService: No Firebase user found, returning null");
       return null; // Not signed into Firebase
     }
-    print("AuthService: Firebase user found: ${firebaseUser.uid}");
     try {
-      final String? idTokenNullable =
-          await firebaseUser.getIdToken(true); // Refresh token
-
-      if (idTokenNullable == null) {
-        print("AuthService: Failed to get ID token from Firebase");
-        throw Exception('Failed to get ID token from Firebase');
-      }
-      final String idToken = idTokenNullable;
-      print("AuthService: ID token obtained successfully");
-
+      final String idToken = await firebaseUser.getIdToken(true); // Refresh token
       // final api = await _safeApiService; // No longer needed
       // Assuming backend has a "/auth/me" endpoint protected by get_current_user dependency
-      print("AuthService: Making GET request to /auth/me");
       final response = await _apiService.get('/auth/me');
-      print("AuthService: Response received: ${response.statusCode}");
 
       if (response.statusCode == 200 && response.data != null) {
-        print("AuthService: Successfully parsed AppUser from response");
         return AppUser.fromJson(response.data as Map<String, dynamic>);
       } else {
         // If /auth/me fails, something is wrong (e.g., profile missing in backend despite Firebase auth)
-        print(
-            "AuthService: Failed to get user profile from backend /auth/me: ${response.statusCode}");
+        print("Failed to get user profile from backend /auth/me: ${response.statusCode}");
         await _firebaseAuth.signOut(); // Sign out to reset state
         return null;
       }
     } catch (e) {
-      print("AuthService: Error fetching current app user from backend: $e");
+      print("Error fetching current app user from backend: $e");
       // Consider signing out if backend profile fetch fails critically
       // await _firebaseAuth.signOut();
       return null;
     }
   }
 }
+```

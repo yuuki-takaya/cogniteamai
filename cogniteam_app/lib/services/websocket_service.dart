@@ -12,15 +12,13 @@ import 'package:cogniteam_app/models/message.dart'; // For parsing incoming mess
 
 class WebSocketService {
   WebSocketChannel? _channel;
-  StreamController<Message> _messageStreamController =
-      StreamController<Message>.broadcast();
+  StreamController<Message> _messageStreamController = StreamController<Message>.broadcast();
   Stream<Message> get messages => _messageStreamController.stream;
 
   bool _isConnected = false;
   bool get isConnected => _isConnected;
 
-  StreamController<bool> _connectionStatusController =
-      StreamController<bool>.broadcast();
+  StreamController<bool> _connectionStatusController = StreamController<bool>.broadcast();
   Stream<bool> get connectionStatus => _connectionStatusController.stream;
 
   final String _groupId;
@@ -39,13 +37,12 @@ class WebSocketService {
   Future<void> connect() async {
     if (_isConnected || _currentUser == null) {
       print("WebSocketService: Already connected or no user. Cannot connect.");
-      if (_currentUser == null) _connectionStatusController.add(false);
+      if(_currentUser == null) _connectionStatusController.add(false);
       return;
     }
 
     try {
-      final String? idToken =
-          await _currentUser!.getIdToken(true); // Force refresh token
+      final String? idToken = await _currentUser!.getIdToken(true); // Force refresh token
       if (idToken == null) {
         print("WebSocketService: Failed to get ID token. Cannot connect.");
         _connectionStatusController.add(false);
@@ -54,15 +51,12 @@ class WebSocketService {
 
       // Determine base WebSocket URL (ws:// or wss://)
       // This needs to be configured, perhaps from .env or derived from HTTP base URL
-      String wsBaseUrl = dotenv.env['BACKEND_WEBSOCKET_URL'] ??
-          dotenv.env['BACKEND_BASE_URL'] ??
-          "";
+      String wsBaseUrl = dotenv.env['BACKEND_WEBSOCKET_URL'] ?? dotenv.env['BACKEND_BASE_URL'] ?? "";
 
       if (wsBaseUrl.isEmpty) {
-        print(
-            "Error: BACKEND_WEBSOCKET_URL or BACKEND_BASE_URL not set for WebSocket.");
-        _connectionStatusController.add(false);
-        return;
+          print("Error: BACKEND_WEBSOCKET_URL or BACKEND_BASE_URL not set for WebSocket.");
+           _connectionStatusController.add(false);
+          return;
       }
 
       // Convert http/https to ws/wss
@@ -90,8 +84,7 @@ class WebSocketService {
       // The wsBaseUrl should point to the root, e.g., ws://127.0.0.1:8000
       // Example: ws://localhost:8000/api/v1/ws/chat/GROUP_ID/TOKEN
 
-      final String webSocketUrl =
-          "$wsBaseUrl/api/v1/ws/chat/$_groupId/$idToken";
+      final String webSocketUrl = "$wsBaseUrl/api/v1/ws/chat/$_groupId/$idToken";
       print("WebSocketService: Connecting to $webSocketUrl");
 
       _channel = WebSocketChannel.connect(Uri.parse(webSocketUrl));
@@ -107,8 +100,7 @@ class WebSocketService {
             final Message message = Message.fromJson(messageJson);
             _messageStreamController.add(message);
           } catch (e) {
-            print(
-                "WebSocketService: Error parsing message data: $e. Data: $data");
+            print("WebSocketService: Error parsing message data: $e. Data: $data");
           }
         },
         onDone: () {
@@ -134,11 +126,9 @@ class WebSocketService {
   void sendMessage(String messageContent) {
     if (_channel != null && _isConnected) {
       print("WebSocketService: Sending message to $_groupId: $messageContent");
-      _channel!.sink
-          .add(messageContent); // Backend expects raw text message content
+      _channel!.sink.add(messageContent); // Backend expects raw text message content
     } else {
-      print(
-          "WebSocketService: Cannot send message. Not connected or channel is null.");
+      print("WebSocketService: Cannot send message. Not connected or channel is null.");
       // Optionally buffer messages to send upon reconnection.
     }
   }
@@ -159,3 +149,4 @@ class WebSocketService {
     _connectionStatusController.close();
   }
 }
+```

@@ -15,14 +15,14 @@ final myChatGroupsProvider = FutureProvider<List<ChatGroup>>((ref) async {
     // Throwing an error might be better to indicate that the operation cannot be performed.
     // Or, the UI layer should only watch this provider if the user is logged in.
     // For now, let's return an empty list if no user.
-    print(
-        "myChatGroupsProvider: No authenticated user found. Returning empty list.");
+    print("myChatGroupsProvider: No authenticated user found. Returning empty list.");
     return [];
   }
 
   final chatGroupService = ref.watch(chatGroupServiceProvider);
   return chatGroupService.getMyChatGroups();
 });
+
 
 // StateNotifier for managing the creation of a new chat group
 // This could also be a simple Future method in a widget if state persistence across widgets isn't complex.
@@ -31,14 +31,12 @@ class ChatGroupCreationNotifier extends StateNotifier<AsyncValue<ChatGroup?>> {
   final ChatGroupService _chatGroupService;
   final Ref _ref;
 
-  ChatGroupCreationNotifier(this._chatGroupService, this._ref)
-      : super(const AsyncValue.data(null));
+  ChatGroupCreationNotifier(this._chatGroupService, this._ref) : super(const AsyncValue.data(null));
 
   Future<void> createChatGroup(String groupName, List<String> agentIds) async {
     state = const AsyncValue.loading();
     try {
-      final creationData =
-          ChatGroupCreationData(groupName: groupName, agentIds: agentIds);
+      final creationData = ChatGroupCreationData(groupName: groupName, agentIds: agentIds);
       final newGroup = await _chatGroupService.createChatGroup(creationData);
       state = AsyncValue.data(newGroup);
       // Successfully created, now invalidate myChatGroupsProvider to refresh the list
@@ -56,9 +54,8 @@ class ChatGroupCreationNotifier extends StateNotifier<AsyncValue<ChatGroup?>> {
   }
 }
 
-final chatGroupCreationNotifierProvider =
-    StateNotifierProvider<ChatGroupCreationNotifier, AsyncValue<ChatGroup?>>(
-        (ref) {
+final chatGroupCreationNotifierProvider = StateNotifierProvider<ChatGroupCreationNotifier, AsyncValue<ChatGroup?>>((ref) {
   final chatGroupService = ref.watch(chatGroupServiceProvider);
   return ChatGroupCreationNotifier(chatGroupService, ref);
 });
+```

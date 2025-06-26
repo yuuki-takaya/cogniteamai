@@ -20,8 +20,7 @@ class ChatGroupsListScreen extends ConsumerWidget {
             icon: const Icon(Icons.add),
             tooltip: 'Create New Group',
             onPressed: () {
-              context.push(AppRoutes
-                  .createChatGroup); // Use push for a new screen over the list
+              context.push(AppRoutes.createChatGroup); // Use push for a new screen over the list
             },
           ),
           IconButton(
@@ -63,8 +62,7 @@ class ChatGroupsListScreen extends ConsumerWidget {
                 onTap: () {
                   // Navigate to the specific chat screen for this group
                   // The path parameter :groupId will be replaced by group.groupId
-                  context.push(AppRoutes.chatScreen
-                      .replaceFirst(':groupId', group.groupId));
+                  context.push(AppRoutes.chatScreen.replaceFirst(':groupId', group.groupId));
                 },
               );
             },
@@ -89,3 +87,4 @@ class ChatGroupsListScreen extends ConsumerWidget {
     );
   }
 }
+```

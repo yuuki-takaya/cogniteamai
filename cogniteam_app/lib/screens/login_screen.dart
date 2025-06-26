@@ -4,7 +4,6 @@ import 'package:cogniteam_app/providers/auth_provider.dart';
 import 'package:cogniteam_app/models/user.dart'; // For AppUser type in AsyncValue
 import 'package:go_router/go_router.dart'; // For navigation
 import 'package:cogniteam_app/navigation/app_router.dart'; // For route names
-import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -23,9 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        await ref
-            .read(authStateNotifierProvider.notifier)
-            .signInWithEmailAndPassword(
+        await ref.read(authStateNotifierProvider.notifier).signInWithEmailAndPassword(
               _emailController.text.trim(),
               _passwordController.text.trim(),
             );
@@ -68,27 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ログイン'),
-        actions: [
-          // Debug button to clear Firebase auth state
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: () async {
-              try {
-                await FirebaseAuth.instance.signOut();
-                print("Debug: Firebase user signed out");
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Firebase認証をクリアしました')),
-                );
-              } catch (e) {
-                print("Debug: Error signing out: $e");
-              }
-            },
-            tooltip: 'Firebase認証をクリア（デバッグ用）',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -101,8 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Please enter your email';
+                  if (value == null || value.isEmpty) return 'Please enter your email';
                   if (!value.contains('@')) return 'Please enter a valid email';
                   return null;
                 },
@@ -112,8 +88,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Please enter your password';
+                  if (value == null || value.isEmpty) return 'Please enter your password';
                   return null;
                 },
               ),
@@ -135,3 +110,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
+```

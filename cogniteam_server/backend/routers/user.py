@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from firebase_admin import firestore
+# from firebase_admin import firestore # No longer needed directly here
 
-from models import UserUpdate, UserResponse, User # Pydantic models
-from services.user_service import UserService
-from dependencies import get_current_user
-from utils.firebase_setup import initialize_firebase_admin # Ensure initialized
+from ..models import UserUpdate, UserResponse, User # Pydantic models
+from ..services.user_service import UserService
+from ..dependencies import get_current_user, get_user_service # Import get_user_service
+# from ..utils.firebase_setup import initialize_firebase_admin # Not needed directly
 
 router = APIRouter(
     prefix="/users",
@@ -12,43 +12,34 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)] # All routes in this router require authentication
 )
 
-# GET /users/me is effectively handled by /auth/me in auth.py router for now.
-# If a separate one is desired here, it would be:
-# @router.get("/me", response_model=UserResponse)
-# async def read_users_me(current_user: User = Depends(get_current_user)):
-#     """
-#     Get current authenticated user's profile.
-#     """
-#     return UserResponse(**current_user.model_dump())
-
-
 @router.put("/me", response_model=UserResponse)
 async def update_current_user_profile(
     user_update_data: UserUpdate,
-    current_user: User = Depends(get_current_user) # Gets the existing User object
+    current_user: User = Depends(get_current_user), # Gets the existing User object
+    user_service: UserService = Depends(get_user_service) # Inject UserService
 ):
     """
     Update the current authenticated user's profile.
     Only fields provided in the request body will be updated.
     The user's prompt will be regenerated if relevant fields are changed.
     """
-    initialize_firebase_admin() # Ensure Firebase is initialized
-    db = firestore.client()     # Get Firestore client
+    # initialize_firebase_admin() # Done at startup
+    # db = firestore.client() # Handled by get_user_service
 
-    # Convert Pydantic model to dict, excluding unset fields to only update provided values
     update_data_dict = user_update_data.model_dump(exclude_unset=True)
 
     if not update_data_dict:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No update data provided.")
 
     try:
-        updated_user = await UserService.update_user_in_firestore(
-            user_id=current_user.user_id, # current_user is User model from get_current_user
-            update_data_dict=update_data_dict,
-            db_client=db
+        # Use the injected user_service instance
+        updated_user = await user_service.update_user_in_firestore(
+            user_id=current_user.user_id,
+            update_data_dict=update_data_dict
+            # db_client is handled by user_service instance
         )
-        if not updated_user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or update failed.")
+        if not updated_user: # Should raise an exception from service if user_id not found
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User profile update failed unexpectedly.")
 
         return UserResponse(**updated_user.model_dump())
     except HTTPException as e:
@@ -58,19 +49,29 @@ async def update_current_user_profile(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {str(e)}")
 
 
-@router.get("/me/prompt", response_model=dict) # Using dict for simplicity, could be a Pydantic model e.g. UserPromptResponse
-async def get_my_agent_prompt(current_user: User = Depends(get_current_user)):
+@router.get("/me/prompt", response_model=dict)
+async def get_my_agent_prompt(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service) # Inject UserService
+):
     """
     Get the current authenticated user's generated agent prompt.
     """
-    initialize_firebase_admin()
-    db = firestore.client()
+    # initialize_firebase_admin() # Done at startup
+    # db = firestore.client() # Handled by get_user_service
 
-    prompt = await UserService.get_user_prompt(user_id=current_user.user_id, db_client=db)
+    prompt = await user_service.get_user_prompt(user_id=current_user.user_id) # db_client handled by instance
 
-    if prompt is None: # Could be empty string if user has no prompt-generating data, or truly None if user/prompt field missing
-        # Distinguish between "no prompt data" vs "user not found" (though get_current_user should prevent user not found)
-        # For now, if prompt is None from service, assume it means not set or not applicable.
-        return {"user_id": current_user.user_id, "prompt": None, "message": "Prompt not available or not set."}
+    # The prompt field in User model is Optional[str].
+    # So, current_user.prompt could be None.
+    # The get_user_prompt method also returns Optional[str].
+    # We can directly use current_user.prompt if get_current_user ensures the User model is fresh.
+    # However, calling user_service.get_user_prompt might be slightly more explicit if prompt generation
+    # logic is complex and not always reflected in the immediate User object from get_current_user.
+    # For now, using the service method is fine.
+
+    if prompt is None: # This implies the prompt field itself is None in the user's document
+        return {"user_id": current_user.user_id, "prompt": None, "message": "Prompt is not set or not applicable for this user."}
 
     return {"user_id": current_user.user_id, "prompt": prompt}
+```

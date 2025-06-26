@@ -11,6 +11,7 @@ import 'package:cogniteam_app/screens/create_chat_group_screen.dart';
 import 'package:cogniteam_app/screens/chat_groups_list_screen.dart';
 import 'package:cogniteam_app/screens/chat_screen.dart'; // Import ChatScreen
 
+
 // Route paths
 class AppRoutes {
   static const String splash = '/'; // Initial route, handles auth check
@@ -20,8 +21,7 @@ class AppRoutes {
   static const String editMyAgent = '/edit-my-agent';
   static const String createChatGroup = '/create-chat-group';
   static const String chatGroupsList = '/chat-groups';
-  static const String chatScreen =
-      '/chat/:groupId'; // Route with path parameter for groupId
+  static const String chatScreen = '/chat/:groupId'; // Route with path parameter for groupId
   // Add other routes here, e.g., editProfile, chatGroup, etc.
 }
 
@@ -31,18 +31,25 @@ class AppRoutes {
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateNotifierProvider); // For redirect logic
+  // final apiServiceReady = ref.watch(apiServiceProvider); // To ensure critical services are ready
 
-  // Create a ValueNotifier that updates when auth state changes
-  final refreshNotifier = ValueNotifier(0);
+  // A Listenable that notifies when authentication state changes, used by GoRouter to re-evaluate redirects.
+  // We can use ValueNotifier or a custom Listenable that depends on authStateNotifierProvider.
+  // For simplicity, we can use the authStateNotifierProvider itself if GoRouter's refreshListenable
+  // can work with StateNotifier directly or its stream/state.
+  // A common pattern is to use a ValueNotifier that changes when auth state changes.
+  // Or, more directly, GoRouter can accept a Listenable. Riverpod providers are Listenables.
 
-  // Listen to auth state changes and update the notifier
-  ref.listen(authStateNotifierProvider, (previous, next) {
-    refreshNotifier.value++;
-  });
+  // Let's use a custom Notifier that Riverpod can provide, or use the authState stream.
+  // For redirect, GoRouter needs to be rebuilt or re-evaluate its redirect logic when auth state changes.
+  // `refreshListenable: GoRouterRefreshStream(ref.watch(authStateChangesProvider.stream))` is one way.
+  // Or, more simply, use the `authStateNotifierProvider` itself as a Listenable.
 
   return GoRouter(
     initialLocation: AppRoutes.splash, // Start at a splash/loading screen
-    refreshListenable: refreshNotifier,
+    // refreshListenable can be the StateNotifier itself, as it's a Listenable.
+    // This will trigger GoRouter to re-evaluate redirects when the AuthStateNotifier's state changes.
+    refreshListenable: ref.watch(authStateNotifierProvider.notifier),
 
     // This redirect logic is crucial for auth flow.
     redirect: (BuildContext context, GoRouterState state) {
@@ -50,8 +57,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isAuthLoading = authState.isLoading;
       final loggedIn = authState.hasValue && authState.value != null;
 
-      print(
-          "GoRouter Redirect: Current Location: $currentLocation, LoggedIn: $loggedIn, AuthLoading: $isAuthLoading");
+      print("GoRouter Redirect: Current Location: $currentLocation, LoggedIn: $loggedIn, AuthLoading: $isAuthLoading");
 
       // If auth state is still loading, and we are not on splash, stay or go to splash.
       // This prevents redirect loops during initial auth check.
@@ -66,26 +72,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       // If logged in:
       if (loggedIn) {
         if (isGoingToLogin || isGoingToSignup || isGoingToSplash) {
-          print(
-              "Redirect: Logged in, redirecting from auth/splash page to home.");
-          return AppRoutes
-              .home; // Redirect to home if logged in and on an auth/splash page
+          print("Redirect: Logged in, redirecting from auth/splash page to home.");
+          return AppRoutes.home; // Redirect to home if logged in and on an auth/splash page
         }
         return null; // No redirect needed if logged in and on an allowed page
       }
       // If not logged in:
       else {
-        if (isGoingToLogin || isGoingToSignup) {
-          return null; // Allow navigation to login, signup if not logged in
-        }
-        if (isGoingToSplash) {
-          print("Redirect: Not logged in, redirecting from splash to login.");
-          return AppRoutes
-              .login; // Redirect from splash to login if not logged in
+        if (isGoingToLogin || isGoingToSignup || isGoingToSplash) {
+          return null; // Allow navigation to login, signup, or splash if not logged in
         }
         print("Redirect: Not logged in, redirecting to login.");
-        return AppRoutes
-            .login; // Redirect to login if not logged in and not on an allowed page
+        return AppRoutes.login; // Redirect to login if not logged in and not on an allowed page
       }
     },
 
@@ -162,3 +160,4 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 //     super.dispose();
 //   }
 // }
+```

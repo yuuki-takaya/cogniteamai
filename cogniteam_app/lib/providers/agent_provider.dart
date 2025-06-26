@@ -13,8 +13,7 @@ final agentServiceProvider = Provider<AgentService>((ref) {
     // This state indicates that ApiService is not yet ready.
     // Consumers of this provider or providers depending on this one
     // should handle the loading/error state of apiServiceProvider.
-    throw StateError(
-        "ApiService not yet available for AgentService. Ensure ApiServiceProvider is loaded.");
+    throw StateError("ApiService not yet available for AgentService. Ensure ApiServiceProvider is loaded.");
   }
   return AgentService(apiService);
 });
@@ -25,3 +24,4 @@ final allAgentsProvider = FutureProvider<List<Agent>>((ref) async {
   final agentService = ref.watch(agentServiceProvider);
   return agentService.getAllAgents();
 });
+```
