@@ -1,0 +1,80 @@
+# General
+*.lock
+*.log
+*.patch
+*.rej
+*.swo
+*.swp
+*.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# Python / Backend
+cogniteam_server/backend/venv/
+cogniteam_server/backend/.env
+cogniteam_server/backend/__pycache__/
+cogniteam_server/backend/*.pyc
+cogniteam_server/backend/.pytest_cache/
+cogniteam_server/backend/.mypy_cache/
+cogniteam_server/backend/.ruff_cache/
+cogniteam_server/backend/celerybeat-schedule
+cogniteam_server/backend/local_db.sqlite3 # Example if using sqlite for local dev
+
+# Flutter / Frontend (most is handled by cogniteam_app/.gitignore)
+# However, we might add global Flutter ignores if necessary, e.g.
+# cogniteam_app/.dart_tool/
+# cogniteam_app/.pub-cache/
+# cogniteam_app/build/
+# cogniteam_app/.env # This is critical if .env is in app root
+
+# IDE specific
+.idea/
+*.iml
+.vscode/
+*.suo
+nbproject/
+project.properties
+project.xml
+*.kdev4
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Terraform (if used)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Serverless Framework (if used)
+.serverless/
+
+# Node.js (if any JS tools are used in root, e.g. for docs)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json # Or yarn.lock if preferred and not part of project source
+
+# Compiled files
+*.o
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Compressed files (unless they are part of the repo intentionally)
+# *.zip
+# *.tar.gz
+# *.rar
+
+# Sensitive files
+# serviceAccountKey.json # Should never be committed if used directly
+# *.pem
+# *.key
+# credentials.*
+
+# If you have a global .env at the root for any reason
+/.env
+```

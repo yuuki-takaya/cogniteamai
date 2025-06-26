@@ -1,0 +1,171 @@
+# Generic Flutter .gitignore
+# See https://docs.flutter.dev/deployment/flavors#create-a-gitignore-file
+
+# General
+*.lock
+*.log
+*.patch
+*.rej
+*.swo
+*.swp
+*.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# Flutter files
+**/build/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/ServiceDefinitions.json
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral_plugins/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.dart_tool/
+.idea/
+
+# Android files
+**/android/key.properties
+**/android/*.keystore
+**/android/app/src/main/assets/flutter_assets/kernel_blob.bin
+**/android/app/src/main/assets/flutter_assets/isolate_snapshot_data
+**/android/app/src/main/assets/flutter_assets/vm_snapshot_data
+**/android/gradlew
+**/android/.gradle/
+**/android/local.properties
+**/android/app/build/
+**/android/app/intermediates/
+**/android/app/outputs/
+**/android/app/generated/
+**/android/app/build/flutter_assets/kernel_blob.bin
+**/android/app/build/flutter_assets/isolate_snapshot_data
+**/android/app/build/flutter_assets/vm_snapshot_data
+**/android/app/build/outputs/
+*.apk
+*.aab
+*.jar
+
+# iOS files
+**/ios/*.xcodeproj/project.xcworkspace/xcshareddata/葷*.xcscheme
+**/ios/*.xcodeproj/xcuserdata/
+**/ios/Flutter/Debug.xcconfig
+**/ios/Flutter/Release.xcconfig
+**/ios/Runner.xcworkspace/xcshareddata/葷*.xcscheme
+**/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/葷*.xcscheme
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/DerivedData/
+**/ios/Pods/Manifest.lock
+**/ios/ServiceDefinitions.json
+**/ios/Flutter/app.flx
+**/ios/Flutter/snapshot.armv7
+**/ios/Flutter/snapshot.arm64
+**/ios/Flutter/vm_snapshot_data
+**/ios/Flutter/isolate_snapshot_data
+**/ios/Flutter/flutter_assets/kernel_blob.bin
+**/ios/Flutter/flutter_assets/isolate_snapshot_data
+**/ios/Flutter/flutter_assets/vm_snapshot_data
+
+# macOS files
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/ephemeral_plugins/
+**/macos/Flutter/FlutterPluginRegistrant/Classes/GeneratedPluginRegistrant.h
+**/macos/Flutter/FlutterPluginRegistrant/Classes/GeneratedPluginRegistrant.m
+**/macos/Flutter/FlutterPluginRegistrant/Classes/GeneratedPluginRegistrant.swift
+**/macos/Flutter/Generated.xcconfig
+**/macos/.symlinks/
+**/macos/Pods/
+**/macos/UserInterface/GeneratedPluginRegistrant.swift
+
+# Windows files
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+**/windows/flutter/generated_plugins.cmake
+**/windows/flutter/ephemeral_plugins/
+**/windows/runner/Debug/
+**/windows/runner/Release/
+**/windows/runner/Profile/
+**/windows/runner/flutter_assets/kernel_blob.bin
+**/windows/runner/flutter_assets/isolate_snapshot_data
+**/windows/runner/flutter_assets/vm_snapshot_data
+**/windows/runner/GeneratedPluginRegistrant.cpp
+**/windows/runner/GeneratedPluginRegistrant.h
+**/windows/runner/win32_window.cpp
+**/windows/runner/win32_window.h
+**/windows/runner/utils.cpp
+**/windows/runner/utils.h
+**/windows/runner/window_configuration.cpp
+**/windows/runner/window_configuration.h
+
+# Linux files
+**/linux/flutter/generated_plugin_registrant.cc
+**/linux/flutter/generated_plugin_registrant.h
+**/linux/flutter/generated_plugins.cmake
+**/linux/flutter/ephemeral_plugins/
+**/linux/my_application.cc.generated.cc # If using different project name
+**/linux/my_application.h.generated.h # If using different project name
+
+# Web files
+**/web/flutter_bootstrap.js
+**/web/main.dart.js
+**/web/assets/AssetManifest.json
+**/web/assets/FontManifest.json
+**/web/assets/NOTICES
+**/web/assets/assets/
+**/web/assets/canvaskit/
+**/web/assets/packages/
+**/web/index.html.bootstrap.js # If using custom index.html
+
+# Environment variables file
+.env
+
+# IDE specific files
+.idea/
+*.iml
+.vscode/
+*.suo
+nbproject/
+project.properties
+project.xml
+*.kdev4
+
+# Mobile specific tools
+fastlane/test_output/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+
+# Crashlytics
+**/Crashlytics/
+**/crashlytics.h
+**/crashlytics.m
+**/crashlytics.swift
+**/Crashlytics.framework/
+**/Fabric.framework/
+
+# Test coverage
+coverage/
+lcov.info
+
+# Documentation
+doc/api/
+
+# Build artifacts for desktop
+**/build/linux/*/release/bundle/
+**/build/windows/*/*/release/bundle/
+**/build/macos/Build/Products/Release/
+
+# Flutter for web build output
+**/build/web/
+
+# Output of 'flutter assemble'
+**/build/flutter_assets/
+
+# Flutter tool state
+.flutter-tool-state
