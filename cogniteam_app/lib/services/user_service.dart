@@ -94,4 +94,27 @@ class UserService {
       throw Exception('An unexpected error occurred while getting prompt: $e');
     }
   }
+
+  /// Fetches all users from the backend (excluding the current user).
+  Future<List<AppUser>> getAllUsers() async {
+    try {
+      final response = await _apiService.get('/users/');
+
+      if (response.statusCode == 200 && response.data != null) {
+        final List<dynamic> userListJson = response.data as List<dynamic>;
+        return userListJson
+            .map((json) => AppUser.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception(
+            'Failed to load users: ${response.statusMessage} ${response.data}');
+      }
+    } on DioException catch (e) {
+      final errorMsg =
+          e.response?.data?['detail'] ?? e.message ?? "Failed to load users";
+      throw Exception('API Error loading users: $errorMsg');
+    } catch (e) {
+      throw Exception('An unexpected error occurred while loading users: $e');
+    }
+  }
 }

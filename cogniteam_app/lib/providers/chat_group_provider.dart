@@ -34,11 +34,14 @@ class ChatGroupCreationNotifier extends StateNotifier<AsyncValue<ChatGroup?>> {
   ChatGroupCreationNotifier(this._chatGroupService, this._ref)
       : super(const AsyncValue.data(null));
 
-  Future<void> createChatGroup(String groupName, List<String> agentIds) async {
+  Future<void> createChatGroup(String groupName, List<String> agentIds,
+      List<String> memberUserIds) async {
     state = const AsyncValue.loading();
     try {
-      final creationData =
-          ChatGroupCreationData(groupName: groupName, agentIds: agentIds);
+      final creationData = ChatGroupCreationData(
+          groupName: groupName,
+          agentIds: agentIds,
+          memberUserIds: memberUserIds);
       final newGroup = await _chatGroupService.createChatGroup(creationData);
       state = AsyncValue.data(newGroup);
       // Successfully created, now invalidate myChatGroupsProvider to refresh the list

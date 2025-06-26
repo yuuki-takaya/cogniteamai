@@ -43,7 +43,7 @@ class ChatGroupService:
                 "agent_ids": group_data.agent_ids, # List of agent UIDs
                 "created_by": creator_user_id,   # UID of the user who created the group
                 "created_at": datetime.now(timezone.utc).isoformat(),
-                "member_user_ids": [creator_user_id], # Initially, only creator is a member. Can be expanded.
+                "member_user_ids": [creator_user_id] + group_data.member_user_ids, # Creator + selected users
                 "active_mission_id": None, # No active mission when group is created
                 "last_message_at": None, # For sorting/filtering groups by activity
                 "last_message_snippet": None, # For display purposes

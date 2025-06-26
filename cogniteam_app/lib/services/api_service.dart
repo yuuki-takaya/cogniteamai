@@ -26,11 +26,10 @@ class ApiService {
     // Load base URL from .env file
     final baseUrl = dotenv.env['BACKEND_BASE_URL'];
     if (baseUrl == null || baseUrl.isEmpty) {
-      // Fallback or error if not set, essential for API calls
-      print('Error: BACKEND_BASE_URL is not set in .env file.');
-      // Consider throwing an exception or using a default development URL
-      // For now, let's use a placeholder that will likely fail, to highlight the issue.
-      dio.options.baseUrl = "http://misconfigured-url:8000/api/v1";
+      // Fallback to default development URL
+      print(
+          'Warning: BACKEND_BASE_URL is not set in .env file. Using default development URL.');
+      dio.options.baseUrl = "http://localhost:8000/api/v1";
     } else {
       dio.options.baseUrl = baseUrl;
     }

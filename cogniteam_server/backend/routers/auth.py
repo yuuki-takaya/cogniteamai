@@ -180,11 +180,18 @@ async def login_with_id_token(token_data: IdTokenRequest):
     2. Getting the ID token from the Firebase User object.
     3. Sending this ID token to this backend endpoint.
     """
+    print(f"Login endpoint called with token data: {token_data}")
+    print(f"Token length: {len(token_data.id_token)}")
+    print(f"Token starts with: {token_data.id_token[:20]}...")
+    
     try:
         decoded_token = await AuthService.verify_firebase_id_token(token_data.id_token)
         uid = decoded_token.get("uid")
         if not uid:
+            print("Login: UID not found in decoded token")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ID token: UID not found.")
+
+        print(f"Login: Token verified successfully for UID: {uid}")
 
         # Fetch user from Firestore using the UID
         # We need a Firestore client instance here. It's better if services handle their own db client needs.
@@ -204,12 +211,17 @@ async def login_with_id_token(token_data: IdTokenRequest):
                 detail=f"User profile not found for authenticated user {email}. Please contact support or try signing up again if this is a new account."
             )
 
+        print(f"Login: User profile found successfully for UID: {uid}")
         return UserResponse(**user_profile.model_dump())
 
     except HTTPException as e:
+        print(f"Login: HTTPException occurred: {e.status_code} - {e.detail}")
         raise e # Re-raise known HTTPExceptions (e.g., from token verification)
     except Exception as e:
-        print(f"Unexpected error during login with ID token: {e}")
+        print(f"Login: Unexpected error during login with ID token: {e}")
+        print(f"Login: Error type: {type(e)}")
+        import traceback
+        print(f"Login: Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred during login: {str(e)}"

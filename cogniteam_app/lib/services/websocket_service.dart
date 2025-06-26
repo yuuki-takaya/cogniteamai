@@ -60,9 +60,8 @@ class WebSocketService {
 
       if (wsBaseUrl.isEmpty) {
         print(
-            "Error: BACKEND_WEBSOCKET_URL or BACKEND_BASE_URL not set for WebSocket.");
-        _connectionStatusController.add(false);
-        return;
+            "Warning: BACKEND_WEBSOCKET_URL or BACKEND_BASE_URL not set for WebSocket. Using default development URL.");
+        wsBaseUrl = "http://localhost:8000";
       }
 
       // Convert http/https to ws/wss

@@ -114,7 +114,11 @@ class AuthService {
     required String password,
   }) async {
     try {
+      print(
+          "AuthService: Starting signInWithEmailAndPassword for email: $email");
+
       // 1. Sign in with Firebase Authentication
+      print("AuthService: Attempting Firebase sign in...");
       final fb_auth.UserCredential userCredential =
           await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
@@ -123,35 +127,52 @@ class AuthService {
 
       final fb_auth.User? firebaseUser = userCredential.user;
       if (firebaseUser == null) {
+        print("AuthService: Firebase sign-in failed: User is null");
         throw Exception('Firebase sign-in failed: User is null.');
       }
 
+      print(
+          "AuthService: Firebase sign-in successful. UID: ${firebaseUser.uid}");
+
       // 2. Get ID token
+      print("AuthService: Getting ID token from Firebase...");
       final String? idTokenNullable =
           await firebaseUser.getIdToken(true); // Force refresh
 
       if (idTokenNullable == null) {
+        print("AuthService: Failed to get ID token from Firebase");
         throw Exception('Failed to get ID token from Firebase');
       }
       final String idToken = idTokenNullable;
+      print(
+          "AuthService: ID token obtained successfully. Length: ${idToken.length}");
+      print(
+          "AuthService: ID token starts with: ${idToken.substring(0, 20)}...");
 
       // 3. Send ID token to backend's /auth/login to get full AppUser profile
       // final api = await _safeApiService; // No longer needed
+      print("AuthService: Sending ID token to backend /auth/login...");
       final response = await _apiService.post(
         '/auth/login',
         data: {'id_token': idToken},
       );
 
+      print(
+          "AuthService: Backend response received. Status: ${response.statusCode}");
       if (response.statusCode == 200 && response.data != null) {
+        print("AuthService: Backend login successful, parsing AppUser...");
         return AppUser.fromJson(response.data as Map<String, dynamic>);
       } else {
+        print(
+            "AuthService: Backend login failed. Status: ${response.statusCode}, Data: ${response.data}");
         // Attempt to sign out from Firebase if backend login fails to keep consistent state
         await _firebaseAuth.signOut();
         throw Exception(
             'Backend login failed: ${response.statusMessage} ${response.data}');
       }
     } on fb_auth.FirebaseAuthException catch (e) {
-      print("FirebaseAuthException during signin: ${e.code} - ${e.message}");
+      print(
+          "AuthService: FirebaseAuthException during signin: ${e.code} - ${e.message}");
       // Common codes: "invalid-email", "user-not-found", "wrong-password", "user-disabled"
       // "INVALID_LOGIN_CREDENTIALS" is common for wrong email/password with recent SDKs
       if (e.code == 'user-not-found' ||
@@ -161,14 +182,17 @@ class AuthService {
       }
       throw Exception('Firebase sign-in error: ${e.message}');
     } on DioException catch (e) {
-      print("DioException during backend login: ${e.message}");
+      print("AuthService: DioException during backend login: ${e.message}");
+      print(
+          "AuthService: DioException response status: ${e.response?.statusCode}");
+      print("AuthService: DioException response data: ${e.response?.data}");
       // Attempt to sign out from Firebase if backend login fails
       await _firebaseAuth.signOut();
       final errorMsg =
           e.response?.data?['detail'] ?? e.message ?? "Login failed";
       throw Exception('Backend login error: $errorMsg');
     } catch (e) {
-      print("Generic error during signin: $e");
+      print("AuthService: Generic error during signin: $e");
       // Attempt to sign out from Firebase if backend login fails
       await _firebaseAuth.signOut();
       throw Exception('An unexpected error occurred during sign-in: $e');

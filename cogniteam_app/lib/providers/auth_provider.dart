@@ -319,3 +319,16 @@ final firebaseUserProvider = Provider<fb_auth.User?>((ref) {
   final authState = ref.watch(authStateChangesProvider);
   return authState.asData?.value;
 });
+
+// Provider for getting all users (excluding current user)
+final allUsersProvider = FutureProvider<List<AppUser>>((ref) async {
+  final appUser = ref.watch(appUserProvider);
+  if (appUser == null) {
+    print(
+        "allUsersProvider: No authenticated user found. Returning empty list.");
+    return [];
+  }
+
+  final userService = ref.watch(userServiceProvider);
+  return userService.getAllUsers();
+});

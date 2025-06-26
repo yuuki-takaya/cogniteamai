@@ -142,15 +142,43 @@ class AuthService:
         Raises HTTPException if invalid.
         """
         initialize_firebase_admin() # Ensure initialized
+        
+        # Check Firebase Admin SDK initialization
+        import firebase_admin
+        print(f"AuthService: Firebase Admin SDK apps: {firebase_admin._apps}")
+        print(f"AuthService: Default app exists: {firebase_admin._apps.get('[DEFAULT]') is not None}")
+        
         try:
-            decoded_token = auth.verify_id_token(id_token)
+            print(f"AuthService: Attempting to verify ID token. Token length: {len(id_token)}")
+            print(f"AuthService: Token starts with: {id_token[:20]}...")
+            
+            # Try to decode the token manually first to see if it's a valid JWT
+            import jwt
+            try:
+                # Decode without verification to see the payload
+                decoded_payload = jwt.decode(id_token, options={"verify_signature": False})
+                print(f"AuthService: JWT payload (without verification): {decoded_payload}")
+                print(f"AuthService: JWT issuer: {decoded_payload.get('iss')}")
+                print(f"AuthService: JWT audience: {decoded_payload.get('aud')}")
+                print(f"AuthService: JWT user_id: {decoded_payload.get('user_id')}")
+            except Exception as jwt_error:
+                print(f"AuthService: JWT decode error: {jwt_error}")
+            
+            decoded_token = auth.verify_id_token(id_token, check_revoked=False, clock_skew_seconds=10)
+            print(f"AuthService: Token verification successful. UID: {decoded_token.get('uid')}")
+            print(f"AuthService: Token email: {decoded_token.get('email')}")
             return decoded_token
         except auth.ExpiredIdTokenError:
+            print("AuthService: ID token has expired")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="ID token has expired. Please log in again.")
-        except auth.InvalidIdTokenError:
+        except auth.InvalidIdTokenError as e:
+            print(f"AuthService: Invalid ID token - {e}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid ID token. Please log in again.")
         except Exception as e:
-            print(f"An unexpected error occurred during token verification: {e}")
+            print(f"AuthService: An unexpected error occurred during token verification: {e}")
+            print(f"AuthService: Error type: {type(e)}")
+            import traceback
+            print(f"AuthService: Full traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not verify authentication token.")
 
     # Note: Login with email/password to get an ID token is typically handled by the Firebase Client SDKs (Flutter, JS, etc.).

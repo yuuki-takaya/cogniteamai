@@ -1,6 +1,7 @@
 from firebase_admin import firestore
 from models import User, UserCreate # Pydantic models
 from datetime import date
+from typing import List
 
 # This service interacts with the 'users' collection in Firestore.
 
@@ -222,3 +223,55 @@ class UserService:
         """Fetches only the prompt for a given user."""
         user_data = await UserService.get_user_by_id(user_id, db_client)
         return user_data.get('prompt') if user_data else None
+
+    @staticmethod
+    async def get_all_users(db_client, exclude_user_id: str = None) -> List[User]:
+        """
+        Fetches all users from Firestore.
+        exclude_user_id: Optional user ID to exclude from the results (e.g., current user)
+        Returns a list of User model instances.
+        """
+        users_collection = db_client.collection('users')
+        try:
+            docs = users_collection.stream()
+            users = []
+            
+            for doc in docs:
+                user_data = doc.to_dict()
+                
+                # Skip if this is the user to exclude
+                if exclude_user_id and user_data.get('user_id') == exclude_user_id:
+                    continue
+                
+                # Ensure date is parsed correctly if stored as string/timestamp
+                if 'birth_date' in user_data and isinstance(user_data['birth_date'], str):
+                    try:
+                        user_data['birth_date'] = date.fromisoformat(user_data['birth_date'])
+                    except ValueError:
+                        print(f"Warning: Could not parse birth_date string '{user_data['birth_date']}' for user {user_data.get('user_id')}")
+                        user_data['birth_date'] = None
+                
+                # Ensure display_name field exists (for backward compatibility)
+                if 'display_name' not in user_data and 'name' in user_data:
+                    user_data['display_name'] = user_data['name']
+                
+                # Ensure created_at field exists (for backward compatibility)
+                if 'created_at' not in user_data:
+                    user_data['created_at'] = date.today()
+                elif isinstance(user_data['created_at'], str):
+                    try:
+                        user_data['created_at'] = date.fromisoformat(user_data['created_at'])
+                    except ValueError:
+                        user_data['created_at'] = date.today()
+                
+                try:
+                    user_model = User(**user_data)
+                    users.append(user_model)
+                except Exception as e:
+                    print(f"Error creating User model for user {user_data.get('user_id')}: {e}")
+                    continue
+            
+            return users
+        except Exception as e:
+            print(f"Error fetching all users from Firestore: {e}")
+            return []

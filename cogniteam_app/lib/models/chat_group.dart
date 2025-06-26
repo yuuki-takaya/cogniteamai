@@ -58,16 +58,19 @@ class ChatGroup {
 class ChatGroupCreationData {
   final String groupName;
   final List<String> agentIds;
+  final List<String> memberUserIds;
 
   ChatGroupCreationData({
     required this.groupName,
     required this.agentIds,
+    this.memberUserIds = const [],
   });
 
   Map<String, dynamic> toJson() {
     return {
       'group_name': groupName,
       'agent_ids': agentIds,
+      'member_user_ids': memberUserIds,
     };
   }
 }

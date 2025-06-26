@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from firebase_admin import firestore
+from typing import List
 
 from models import UserUpdate, UserResponse, User # Pydantic models
 from services.user_service import UserService
@@ -20,6 +21,23 @@ router = APIRouter(
 #     Get current authenticated user's profile.
 #     """
 #     return UserResponse(**current_user.model_dump())
+
+
+@router.get("/", response_model=List[UserResponse])
+async def get_all_users(current_user: User = Depends(get_current_user)):
+    """
+    Get all users (excluding the current user).
+    This endpoint is used for selecting users to add to chat groups.
+    """
+    initialize_firebase_admin()
+    db = firestore.client()
+
+    try:
+        users = await UserService.get_all_users(db_client=db, exclude_user_id=current_user.user_id)
+        return [UserResponse(**user.model_dump()) for user in users]
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch users.")
 
 
 @router.put("/me", response_model=UserResponse)

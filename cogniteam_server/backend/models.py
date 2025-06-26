@@ -65,6 +65,7 @@ class Agent(BaseModel):
 class ChatGroupCreate(BaseModel):
     group_name: str
     agent_ids: List[str]
+    member_user_ids: List[str] = []
 
 from datetime import datetime # Add this import
 

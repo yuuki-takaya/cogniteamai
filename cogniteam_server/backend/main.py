@@ -5,7 +5,13 @@ from routers import auth, user, agent, chat_group, chat, insight
 from config import settings
 
 # Initialize Firebase Admin SDK on startup
+print("Main: Starting Firebase Admin SDK initialization...")
 initialize_firebase_admin()
+
+# Check Firebase Admin SDK initialization
+import firebase_admin
+print(f"Main: Firebase Admin SDK apps after initialization: {firebase_admin._apps}")
+print(f"Main: Default app exists: {firebase_admin._apps.get('[DEFAULT]') is not None}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
