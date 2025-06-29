@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cogniteam_app/models/message.dart';
 import 'package:cogniteam_app/models/mission.dart';
 import 'package:cogniteam_app/services/chat_group_service.dart';
-import 'package:cogniteam_app/services/websocket_service.dart';
 import 'package:cogniteam_app/providers/auth_provider.dart'; // For chatGroupServiceProvider
 
 // Represents the state of a single chat screen
@@ -13,7 +12,6 @@ class ChatScreenState {
   final bool isLoadingMessages;
   final bool isSendingMessage;
   final bool isSettingMission;
-  final bool isWebSocketConnected;
   final String? errorMessage;
 
   ChatScreenState({
@@ -22,7 +20,6 @@ class ChatScreenState {
     this.isLoadingMessages = true,
     this.isSendingMessage = false,
     this.isSettingMission = false,
-    this.isWebSocketConnected = false,
     this.errorMessage,
   });
 
@@ -32,7 +29,6 @@ class ChatScreenState {
     bool? isLoadingMessages,
     bool? isSendingMessage,
     bool? isSettingMission,
-    bool? isWebSocketConnected,
     String? errorMessage,
     bool clearErrorMessage = false,
   }) {
@@ -42,7 +38,6 @@ class ChatScreenState {
       isLoadingMessages: isLoadingMessages ?? this.isLoadingMessages,
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
       isSettingMission: isSettingMission ?? this.isSettingMission,
-      isWebSocketConnected: isWebSocketConnected ?? this.isWebSocketConnected,
       errorMessage:
           clearErrorMessage ? null : errorMessage ?? this.errorMessage,
     );
@@ -52,15 +47,10 @@ class ChatScreenState {
 class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
   final String groupId;
   final ChatGroupService _chatGroupService;
-  final WebSocketService _webSocketService;
   final Ref _ref;
-  StreamSubscription? _wsMessageSubscription;
-  StreamSubscription? _wsConnectionStatusSubscription;
 
   ChatScreenNotifier(this.groupId, this._chatGroupService, this._ref)
-      : _webSocketService = WebSocketService(
-            groupId), // Each notifier instance gets its own WebSocketService
-        super(ChatScreenState()) {
+      : super(ChatScreenState()) {
     _initialize();
   }
 
@@ -76,28 +66,6 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
 
       state =
           state.copyWith(messages: initialMessages, isLoadingMessages: false);
-
-      // Connect WebSocket
-      await _webSocketService.connect();
-      _wsConnectionStatusSubscription =
-          _webSocketService.connectionStatus.listen((isConnected) {
-        state = state.copyWith(isWebSocketConnected: isConnected);
-        if (!isConnected) {
-          // Handle disconnection, maybe try to reconnect or show error
-          state = state.copyWith(errorMessage: "WebSocket disconnected.");
-        }
-      });
-
-      _wsMessageSubscription = _webSocketService.messages.listen((newMessage) {
-        // Add new message to the list, avoid duplicates if any race condition
-        if (!state.messages.any((m) => m.messageId == newMessage.messageId)) {
-          state = state.copyWith(messages: [...state.messages, newMessage]);
-        }
-      }, onError: (error) {
-        state = state.copyWith(
-            errorMessage: "WebSocket error: $error",
-            isWebSocketConnected: false);
-      });
     } catch (e, stack) {
       state =
           state.copyWith(isLoadingMessages: false, errorMessage: e.toString());
@@ -106,21 +74,15 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
   }
 
   Future<void> sendMessage(String content) async {
-    if (!_webSocketService.isConnected) {
-      state = state.copyWith(
-          errorMessage: "Not connected to chat. Please try again.");
-      // Attempt to reconnect or prompt user
-      await _webSocketService.connect();
-      return;
-    }
-    // Optimistically add message to UI? Or wait for WebSocket echo?
-    // For now, rely on WebSocket echo.
     state = state.copyWith(isSendingMessage: true, clearErrorMessage: true);
     try {
-      _webSocketService.sendMessage(content);
-      // Message is sent; backend will broadcast it back including to sender.
-      // No need to manually add to state.messages here if relying on broadcast.
-      state = state.copyWith(isSendingMessage: false);
+      // Send message via REST API
+      final newMessage =
+          await _chatGroupService.sendMessageToGroup(groupId, content);
+
+      // Add the new message to the state
+      state = state.copyWith(
+          messages: [...state.messages, newMessage], isSendingMessage: false);
     } catch (e) {
       state =
           state.copyWith(isSendingMessage: false, errorMessage: e.toString());
@@ -147,13 +109,22 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
     // Logic for pagination
   }
 
+  // Method to refresh messages
+  Future<void> refreshMessages() async {
+    state = state.copyWith(isLoadingMessages: true, clearErrorMessage: true);
+    try {
+      final messages =
+          await _chatGroupService.getMessagesForGroup(groupId, limit: 50);
+      state = state.copyWith(messages: messages, isLoadingMessages: false);
+    } catch (e) {
+      state =
+          state.copyWith(isLoadingMessages: false, errorMessage: e.toString());
+    }
+  }
+
   @override
   void dispose() {
     print("Disposing ChatScreenNotifier for group $groupId");
-    _wsMessageSubscription?.cancel();
-    _wsConnectionStatusSubscription?.cancel();
-    _webSocketService
-        .dispose(); // Important to close WebSocket connection and stream controllers
     super.dispose();
   }
 }
@@ -163,6 +134,5 @@ class ChatScreenNotifier extends StateNotifier<ChatScreenState> {
 final chatScreenNotifierProvider = StateNotifierProvider.autoDispose
     .family<ChatScreenNotifier, ChatScreenState, String>((ref, groupId) {
   final chatGroupService = ref.watch(chatGroupServiceProvider);
-  // WebSocketService is instantiated directly by ChatScreenNotifier.
   return ChatScreenNotifier(groupId, chatGroupService, ref);
 });

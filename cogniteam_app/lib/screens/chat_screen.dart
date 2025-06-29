@@ -128,14 +128,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             tooltip: 'Set Mission',
             onPressed: _showSetMissionDialog,
           ),
-          // Display WebSocket connection status
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Icon(
-              chatState.isWebSocketConnected ? Icons.wifi : Icons.wifi_off,
-              color: chatState.isWebSocketConnected ? Colors.green : Colors.red,
-            ),
-          )
         ],
       ),
       body: Column(

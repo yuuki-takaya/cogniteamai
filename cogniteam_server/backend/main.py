@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import Response
 from starlette.requests import Request
 from utils.firebase_setup import initialize_firebase_admin
@@ -50,7 +50,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
 app.include_router(agent.router, prefix="/api/v1")
 app.include_router(chat_group.router, prefix="/api/v1")
-app.include_router(chat.router, prefix="/api/v1") # WebSocket routes might have a different prefix or none if ws:// is distinct enough
+# app.include_router(chat.router, prefix="/api/v1") # WebSocket routes disabled
 app.include_router(insight.router, prefix="/api/v1")
 app.include_router(simulation.router, prefix="/api/v1")
 

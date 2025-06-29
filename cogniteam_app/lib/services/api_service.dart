@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_auth/firebase_auth.dart'
     as fb_auth; // For getting ID token
+import 'package:cogniteam_app/config/app_config.dart';
 
 class ApiService {
   final Dio _dio;
@@ -23,16 +24,21 @@ class ApiService {
   static Future<Dio> _createDioInstance() async {
     final dio = Dio();
 
-    // Load base URL from .env file
-    final baseUrl = dotenv.env['BACKEND_BASE_URL'];
-    if (baseUrl == null || baseUrl.isEmpty) {
-      // Fallback to default development URL
-      print(
-          'Warning: BACKEND_BASE_URL is not set in .env file. Using default development URL.');
-      dio.options.baseUrl = "http://localhost:8000/api/v1";
+    // Try to load from .env first, then fallback to AppConfig
+    final envBaseUrl = dotenv.env['BACKEND_BASE_URL'];
+    print('ApiService: BACKEND_BASE_URL from .env: $envBaseUrl');
+
+    String baseUrl;
+    if (envBaseUrl != null && envBaseUrl.isNotEmpty) {
+      baseUrl = envBaseUrl;
+      print('ApiService: Using URL from .env file');
     } else {
-      dio.options.baseUrl = baseUrl;
+      baseUrl = AppConfig.backendBaseUrl;
+      print('ApiService: Using URL from AppConfig: $baseUrl');
     }
+
+    dio.options.baseUrl = baseUrl;
+    print('ApiService: Final base URL: ${dio.options.baseUrl}');
 
     dio.options.connectTimeout = const Duration(seconds: 15); // 15 seconds
     dio.options.receiveTimeout = const Duration(seconds: 15); // 15 seconds

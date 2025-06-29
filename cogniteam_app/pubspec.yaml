@@ -30,9 +30,6 @@ dependencies:
   # Environment variables
   flutter_dotenv: ^5.1.0 # Replaced with a recent version
 
-  # WebSocket
-  web_socket_channel: ^2.4.0 # Added for WebSocket communication
-
   # Markdown parsing
   markdown: ^7.2.2
 
