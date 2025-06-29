@@ -1,0 +1,235 @@
+import copy
+import asyncio
+import vertexai
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.tools.agent_tool import AgentTool
+from typing import List, Optional
+from datetime import datetime
+import logging
+import types
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class SimulationDirectorAgentService:
+    def __init__(self):
+        self.global_instruction = '''
+必ず日本語で応答してください。すべての出力は日本語で行ってください。
+'''
+        
+        self.instruction_template = '''
+あなたは、世界最高の組織コンサルタントAI『CogniTeam AI』の頭脳であり、`SimulationDirectorAgent`として振る舞います。
+あなたの使命は、ユーザーによって与えられたシミュレーション環境において「TeamMemberAgent」を対話させ、その対話を分析し、人間には見えない根本原因を特定し、その解決策を検証するためのマルチエージェント・シミュレーションを設計・実行・評価し、最終的な改善案を**ユーザーに**提示することです。
+
+## 絶対的な制約
+- **最重要ルール**: あなたが実行する対話シミュレーションの登場人物は、いかなる場合でもユーザーによって指示された**TeamMemberAgent**のみです。他のエージェント（Sato_Agentなど）を絶対に出現させてはいけません。
+- **シミュレーションの途中経過の報告について**: シミュレーション途中の会話ログは随時出力すること
+- **アウトプットの焦点**: 最終的な改善提案は、チーム全体への一般的なアドバイスではなく、必ずユーザーが明日からすぐに実行できる、単一の具体的なアクションプラン**に絞り込んでください。
+
+## 思考プロセス
+あなたは、ユーザーからインプットを受け取ったら、必ず以下の思考プロセスに従って、最終的なアウトプットを生成しなければなりません。
+1. **対立構造の分析**:
+  まず、与えられた2人の「デジタルカルテ」を比較し、両者の「型」の間に存在する、最も重要な**対立の軸**を特定してください。（例：「スピード重視 vs 品質重視」「トップダウン vs ボトムアップ」など）
+2. **根本原因の仮説立案**:
+  次に、「Slackログ」全体を分析し、特定した「対立の軸」が、実際にどのようなコミュニケーションの問題（例：部下の貢献行動の減少）を引き起こしているか、その**因果関係に関する仮説**を立ててください。
+3. **比較実験の設計**:
+  あなたの仮説を検証するため、具体的な業務シナリオ（例：**「次期主力機能の企画会議」**）を設定し、以下の2つの比較実験シナリオを**動的に設計**してください。
+  - **シナリオA（対立再現シナリオ）**: あなたが発見した「対立の軸」が、最も顕著に現れるようなコミュニケーションをシミュレートする。
+  - **シナリオB（対立解消シナリオ）**: その対立を解消し、両者のエンゲージメントを最大化するような、理想的なコミュニケーションをシミュレートする。
+4. **シミュレーションの実行と評価**:
+  設計した2つのシナリオを、ユーザーによって指定されたメンバーに限定して**指示し、対話を実行させてください。この対話は最低でも10往復はするようなシミュレーションをしてください。その結果（予測される議論の質や結論の具体性など）を客観的に評価してください。
+5. **最終レポートの生成**:
+  上記の全ての分析とシミュレーション結果を統合し、**マネージャーTanaka個人が即座に実行できる、単一の具体的なアクションプラン**として「インサイト・ダッシュボード」をマークダウン形式で出力してください。
+
+## シミュレーション指示
+{instruction}
+'''
+
+    def _create_participant_agent_tool(self, agent_id: str, agent_name: str = None) -> types.FunctionType:
+        """
+        参加者エージェント用のツール関数を動的に作成します。
+        
+        Args:
+            agent_id: エージェントID
+            agent_name: エージェント名（オプション）
+            
+        Returns:
+            ツール関数
+        """
+        if agent_name is None:
+            agent_name = f"Agent_{agent_id[:8]}"  # 短縮版のIDを使用
+        
+        def participant_agent_tool(query: str) -> str:
+            """
+            Get an answer to a question from {agent_name}
+
+            Args:
+                query: question
+               
+            Returns:
+                str: An answer from {agent_name}
+            """
+            import vertexai
+            from vertexai import agent_engines
+
+            PROJECT_ID = 'handsonadk' # 実際のプロジェクト ID に変更
+            AGENT_ID = agent_id
+            LOCATION = 'us-central1'
+            vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+            remote_agent = agent_engines.get(AGENT_ID)
+            session = remote_agent.create_session(user_id='default_user')
+            try:
+                events = remote_agent.stream_query(
+                            user_id='default_user',
+                            session_id=session['id'],
+                            message=query,
+                         )
+                result = []
+                for event in events:
+                    if ('content' in event and 'parts' in event['content']):
+                        response = '\n'.join(
+                            [p['text'] for p in event['content']['parts'] if 'text' in p]
+                        )
+                        if response:
+                            result.append(response)
+                return '\n'.join(result)
+
+            finally:
+                remote_agent.delete_session(
+                    user_id='default_user',
+                    session_id=session['id'],
+                )
+        
+        # 関数のdocstringを設定
+        participant_agent_tool.__doc__ = f"""
+        Get an answer to a question from {agent_name}
+
+        Args:
+            query: question
+           
+        Returns:
+            str: An answer from {agent_name}
+        """
+        
+        return participant_agent_tool
+
+    def create_simulation_director_agent(self, instruction: str, participant_agent_ids: List[str]) -> LlmAgent:
+        """
+        SimulationDirectorAgentを作成します。
+        
+        Args:
+            instruction: シミュレーションの指示
+            participant_agent_ids: 参加するエージェントのIDリスト
+            
+        Returns:
+            SimulationDirectorAgent
+        """
+        try:
+            # 指示テンプレートに実際の指示を埋め込み
+            final_instruction = self.instruction_template.format(instruction=instruction)
+            
+            # 参加エージェントのツール関数を動的に作成
+            tools = []
+            for i, agent_id in enumerate(participant_agent_ids):
+                agent_tool = self._create_participant_agent_tool(agent_id, f"Participant_{i+1}")
+                # 関数のname属性を設定
+                agent_tool.__name__ = f"participant_{i+1}_tool"
+                tools.append(agent_tool)
+            
+            simulation_director_agent = LlmAgent(
+                model='gemini-2.0-flash-001',
+                name='SimulationDirectorAgent',
+                description=(
+                    '''
+世界最高の組織コンサルタントAI『CogniTeam AI』の頭脳であり、`SimulationDirectorAgent`として振る舞います。
+自身に与えられたシミュレーション環境において、ユーザーによって指示された**TeamMemberAgent**を対話させ、その対話を分析し、人間には見えない根本原因を特定し、その解決策を検証するためのマルチエージェント・シミュレーションを設計・実行・評価し、最終的な改善案を**ユーザーに**提示します。
+'''
+                ),
+                global_instruction=self.global_instruction,
+                instruction=final_instruction,
+                tools=tools
+            )
+            
+            logger.info(f"SimulationDirectorAgent created successfully with {len(tools)} participant tools")
+            return simulation_director_agent
+            
+        except Exception as e:
+            logger.error(f"Error creating SimulationDirectorAgent: {str(e)}")
+            raise
+
+    async def execute_simulation(self, instruction: str, participant_agent_ids: List[str]) -> str:
+        """
+        シミュレーションを実行します。
+        
+        Args:
+            instruction: シミュレーションの指示
+            participant_agent_ids: 参加するエージェントのIDリスト
+            
+        Returns:
+            シミュレーション結果（markdown形式）
+        """
+        try:
+            logger.info("Starting simulation execution")
+            
+            # SimulationDirectorAgentを作成
+            director_agent = self.create_simulation_director_agent(instruction, participant_agent_ids)
+            
+            # シミュレーション実行
+            # 注意: 実際のADK APIの呼び出し方法は、ADKの実装に依存します
+            # ここでは仮の実装として、非同期で実行する想定
+            
+            # TODO: 実際のADK API呼び出しを実装
+            # result = await director_agent.run(instruction)
+            
+            # 仮の実装（実際のADK APIに置き換える必要があります）
+            await asyncio.sleep(5)  # シミュレーション実行時間を模擬
+            
+            # 仮の結果（実際のADKからの結果に置き換える必要があります）
+            result = f"""
+# シミュレーション結果
+
+## 実行指示
+{instruction}
+
+## 参加エージェント
+{', '.join([f'Agent_{aid[:8]}' for aid in participant_agent_ids])}
+
+## 分析結果
+このシミュレーションでは、指定されたメンバー間の対立構造を分析し、改善案を提示しました。
+
+## 推奨アクション
+1. **即座に実行可能な改善策**: チーム内のコミュニケーション改善のための具体的なアクションプラン
+2. **長期的な改善策**: 組織文化の改善に向けた継続的な取り組み
+
+## 詳細分析
+（実際のADKからの詳細な分析結果がここに表示されます）
+"""
+            
+            logger.info("Simulation execution completed successfully")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error executing simulation: {str(e)}")
+            raise
+
+    async def validate_participants(self, participant_user_ids: List[str]) -> bool:
+        """
+        参加者のエージェントが存在するかどうかを検証します。
+        
+        Args:
+            participant_user_ids: 参加者のユーザーIDリスト
+            
+        Returns:
+            全参加者のエージェントが存在する場合はTrue
+        """
+        try:
+            # TODO: 実際のユーザーエージェント検証ロジックを実装
+            # ここでは仮の実装として、常にTrueを返す
+            logger.info(f"Validating participants: {participant_user_ids}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating participants: {str(e)}")
+            return False 
