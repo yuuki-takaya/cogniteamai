@@ -1,4 +1,4 @@
-import copy
+import copy, os
 import asyncio
 import vertexai
 from google.adk.agents.llm_agent import LlmAgent
@@ -7,6 +7,19 @@ from typing import List, Optional
 from datetime import datetime
 import logging
 import types
+from .local_app import LocalApp
+from config import settings
+import time
+
+
+PROJECT_ID = 'handsonadk'
+LOCATION = 'us-central1'
+
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+os.environ['GOOGLE_CLOUD_PROJECT'] = PROJECT_ID
+os.environ['GOOGLE_CLOUD_LOCATION'] = LOCATION
+os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'True'
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,9 +43,9 @@ class SimulationDirectorAgentService:
 ## 思考プロセス
 あなたは、ユーザーからインプットを受け取ったら、必ず以下の思考プロセスに従って、最終的なアウトプットを生成しなければなりません。
 1. **対立構造の分析**:
-  まず、与えられた2人の「デジタルカルテ」を比較し、両者の「型」の間に存在する、最も重要な**対立の軸**を特定してください。（例：「スピード重視 vs 品質重視」「トップダウン vs ボトムアップ」など）
+  まず、与えられたメンバーを比較し、両者の「型」の間に存在する、最も重要な**対立の軸**を特定してください。（例：「スピード重視 vs 品質重視」「トップダウン vs ボトムアップ」など）
 2. **根本原因の仮説立案**:
-  次に、「Slackログ」全体を分析し、特定した「対立の軸」が、実際にどのようなコミュニケーションの問題（例：部下の貢献行動の減少）を引き起こしているか、その**因果関係に関する仮説**を立ててください。
+  次に特定した「対立の軸」が、実際にどのようなコミュニケーションの問題（例：部下の貢献行動の減少）を引き起こしているか、その**因果関係に関する仮説**を立ててください。
 3. **比較実験の設計**:
   あなたの仮説を検証するため、具体的な業務シナリオ（例：**「次期主力機能の企画会議」**）を設定し、以下の2つの比較実験シナリオを**動的に設計**してください。
   - **シナリオA（対立再現シナリオ）**: あなたが発見した「対立の軸」が、最も顕著に現れるようなコミュニケーションをシミュレートする。
@@ -46,19 +59,26 @@ class SimulationDirectorAgentService:
 {instruction}
 '''
 
-    def _create_participant_agent_tool(self, agent_id: str, agent_name: str = None) -> types.FunctionType:
+    def _create_participant_agent_tool(self, agent_id: str, agent_name: str = None, user_id: str = None) -> types.FunctionType:
         """
         参加者エージェント用のツール関数を動的に作成します。
         
         Args:
             agent_id: エージェントID
             agent_name: エージェント名（オプション）
+            user_id: ユーザーID（オプション）
             
         Returns:
             ツール関数
         """
+        logger.info(f"Creating participant agent tool for agent_id: {agent_id}, agent_name: {agent_name}, user_id: {user_id}")
+        
         if agent_name is None:
             agent_name = f"Agent_{agent_id[:8]}"  # 短縮版のIDを使用
+        
+        # user_idが指定されていない場合は、agent_idを使用
+        if user_id is None:
+            user_id = agent_id
         
         def participant_agent_tool(query: str) -> str:
             """
@@ -78,11 +98,16 @@ class SimulationDirectorAgentService:
             LOCATION = 'us-central1'
             vertexai.init(project=PROJECT_ID, location=LOCATION)
 
+            print(f"AGENT_ID: {AGENT_ID}, USER_ID: {user_id}")
+
+            # レート制限回避のための遅延（1分間に10リクエスト制限のため、最低6秒間隔）
+            time.sleep(6)
+
             remote_agent = agent_engines.get(AGENT_ID)
-            session = remote_agent.create_session(user_id='default_user')
+            session = remote_agent.create_session(user_id=user_id)
             try:
                 events = remote_agent.stream_query(
-                            user_id='default_user',
+                            user_id=user_id,
                             session_id=session['id'],
                             message=query,
                          )
@@ -98,7 +123,7 @@ class SimulationDirectorAgentService:
 
             finally:
                 remote_agent.delete_session(
-                    user_id='default_user',
+                    user_id=user_id,
                     session_id=session['id'],
                 )
         
@@ -115,13 +140,14 @@ class SimulationDirectorAgentService:
         
         return participant_agent_tool
 
-    def create_simulation_director_agent(self, instruction: str, participant_agent_ids: List[str]) -> LlmAgent:
+    def create_simulation_director_agent(self, instruction: str, participant_agent_ids: List[str], participant_user_ids: List[str] = None) -> LlmAgent:
         """
         SimulationDirectorAgentを作成します。
         
         Args:
             instruction: シミュレーションの指示
             participant_agent_ids: 参加するエージェントのIDリスト
+            participant_user_ids: 参加するユーザーのIDリスト（オプション）
             
         Returns:
             SimulationDirectorAgent
@@ -130,10 +156,17 @@ class SimulationDirectorAgentService:
             # 指示テンプレートに実際の指示を埋め込み
             final_instruction = self.instruction_template.format(instruction=instruction)
             
+            logger.info(f"Creating SimulationDirectorAgent with {len(participant_agent_ids)} participants")
+            logger.info(f"Participant agent IDs: {participant_agent_ids}")
+            logger.info(f"Participant user IDs: {participant_user_ids}")
+            
             # 参加エージェントのツール関数を動的に作成
             tools = []
             for i, agent_id in enumerate(participant_agent_ids):
-                agent_tool = self._create_participant_agent_tool(agent_id, f"Participant_{i+1}")
+                logger.info(f"Creating tool for agent {i+1}: {agent_id}")
+                # ユーザーIDが指定されている場合は使用、そうでなければagent_idを使用
+                user_id = participant_user_ids[i] if participant_user_ids and i < len(participant_user_ids) else agent_id
+                agent_tool = self._create_participant_agent_tool(agent_id, f"Participant_{i+1}", user_id)
                 # 関数のname属性を設定
                 agent_tool.__name__ = f"participant_{i+1}_tool"
                 tools.append(agent_tool)
@@ -159,23 +192,28 @@ class SimulationDirectorAgentService:
             logger.error(f"Error creating SimulationDirectorAgent: {str(e)}")
             raise
 
-    async def execute_simulation(self, instruction: str, participant_agent_ids: List[str]) -> str:
+    async def execute_simulation(self, instruction: str, participant_agent_ids: List[str], participant_user_ids: List[str] = None) -> str:
         """
         シミュレーションを実行します。
         
         Args:
             instruction: シミュレーションの指示
             participant_agent_ids: 参加するエージェントのIDリスト
+            participant_user_ids: 参加するユーザーのIDリスト（オプション）
             
         Returns:
             シミュレーション結果（markdown形式）
         """
         try:
             logger.info("Starting simulation execution")
+            logger.info(f"Participant agent IDs: {participant_agent_ids}")
+            logger.info(f"Participant user IDs: {participant_user_ids}")
             
             # SimulationDirectorAgentを作成
-            director_agent = self.create_simulation_director_agent(instruction, participant_agent_ids)
-            
+            director_agent = self.create_simulation_director_agent(instruction, participant_agent_ids, participant_user_ids)
+            client = LocalApp(director_agent)
+            DEBUG = False
+            result_detail = await client.stream(instruction)
             # シミュレーション実行
             # 注意: 実際のADK APIの呼び出し方法は、ADKの実装に依存します
             # ここでは仮の実装として、非同期で実行する想定
@@ -183,8 +221,6 @@ class SimulationDirectorAgentService:
             # TODO: 実際のADK API呼び出しを実装
             # result = await director_agent.run(instruction)
             
-            # 仮の実装（実際のADK APIに置き換える必要があります）
-            await asyncio.sleep(5)  # シミュレーション実行時間を模擬
             
             # 仮の結果（実際のADKからの結果に置き換える必要があります）
             result = f"""
@@ -204,7 +240,7 @@ class SimulationDirectorAgentService:
 2. **長期的な改善策**: 組織文化の改善に向けた継続的な取り組み
 
 ## 詳細分析
-（実際のADKからの詳細な分析結果がここに表示されます）
+{result_detail}
 """
             
             logger.info("Simulation execution completed successfully")

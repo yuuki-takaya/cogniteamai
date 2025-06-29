@@ -1,7 +1,7 @@
 # Pydantic models for data validation and serialization
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 import uuid
 
 class UserBase(BaseModel):
@@ -26,6 +26,7 @@ class User(UserBase):
     created_at: date = Field(default_factory=date.today, description="Date when the user was created")
     prompt: Optional[str] = Field(None, description="Generated prompt for the user's agent")
     agent_engine_endpoint: Optional[str] = Field(None, description="Vertex AI Agent Engine endpoint URL")
+    agent_engine_id: Optional[str] = Field(None, description="Vertex AI Agent Engine ID")
     # Add other fields as needed (e.g., profile picture URL, preferences, etc.)
 
     class Config:
@@ -35,6 +36,7 @@ class UserResponse(UserBase):
     user_id: str
     email: EmailStr
     prompt: Optional[str] = None
+    agent_engine_id: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -66,8 +68,6 @@ class ChatGroupCreate(BaseModel):
     group_name: str
     agent_ids: List[str]
     member_user_ids: List[str] = []
-
-from datetime import datetime # Add this import
 
 class ChatGroup(ChatGroupCreate):
     group_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -102,3 +102,38 @@ class Insight(BaseModel):
     group_id: str
     insight_text: str
     generated_at: str # ISO format string
+
+class SimulationCreate(BaseModel):
+    simulation_name: str
+    instruction: str
+    participant_user_ids: List[str]
+
+class Simulation(BaseModel):
+    simulation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    simulation_name: str
+    instruction: str
+    created_by: str  # user_id
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    participant_user_ids: List[str]
+    status: str = "pending"  # "pending", "running", "completed", "failed", "cancelled"
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    result_summary: Optional[str] = None
+    error_message: Optional[str] = None
+
+class SimulationResponse(BaseModel):
+    simulation_id: str
+    simulation_name: str
+    instruction: str
+    created_by: str
+    created_at: datetime
+    participant_user_ids: List[str]
+    status: str
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    result_summary: Optional[str] = None
+    error_message: Optional[str] = None
+
+class SimulationListResponse(BaseModel):
+    simulations: List[SimulationResponse]
+    total_count: int

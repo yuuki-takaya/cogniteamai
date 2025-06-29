@@ -191,14 +191,16 @@ class AgentEngineService:
                 resource_name = deployment_result.get("resource_name", "")
                 agent_name = deployment_result.get("agent_name", agent.name)
                 endpoint_url = f"https://projects/{self.project_id}/locations/{self.location}/reasoningEngines/{resource_name}"
+                agent_id = agent_name
                 print(f"AgentEngineService: Successfully deployed agent to: {endpoint_url}")
             else:
                 # Fallback to placeholder endpoint
                 endpoint_url = deployment_result if isinstance(deployment_result, str) else f"https://{self.location}-{self.project_id}.run.app/agents/{agent.name}"
+                agent_id = agent.name  # Use agent name as fallback ID
                 print(f"AgentEngineService: Using fallback endpoint: {endpoint_url}")
             
             result = {
-                "agent_id": agent.name,
+                "agent_id": agent_id,
                 "endpoint_url": endpoint_url,
                 "deployment_result": deployment_result
             }

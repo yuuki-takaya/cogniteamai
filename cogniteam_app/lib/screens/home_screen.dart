@@ -54,6 +54,20 @@ class HomeScreen extends ConsumerWidget {
                     },
                     child: const Text('View My Chat Groups'),
                   ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.push(AppRoutes.simulationsList);
+                    },
+                    child: const Text('シミュレーション一覧'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.push(AppRoutes.createSimulation);
+                    },
+                    child: const Text('新しいシミュレーションを作成'),
+                  ),
                   // Add more buttons/navigation to other features like:
                   // - Create/View Chat Groups (direct create button might be on ChatGroupsListScreen)
                 ],

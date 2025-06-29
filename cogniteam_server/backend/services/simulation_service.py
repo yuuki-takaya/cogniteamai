@@ -260,17 +260,14 @@ class SimulationService:
             if not simulation:
                 raise ValueError("Simulation not found")
 
-            # TODO: 参加者のエージェントIDを取得するロジックを実装
-            # participant_agent_ids = await self._get_participant_agent_ids(simulation.participant_user_ids)
+            # 参加者のエージェントIDを取得
+            participant_agent_ids = await self._get_participant_agent_ids(simulation.participant_user_ids)
             
-            # 仮の実装（実際のエージェントID取得ロジックに置き換える必要があります）
-            # ここでは、ユーザーIDをそのままエージェントIDとして使用（実際の実装では異なる可能性があります）
-            participant_agent_ids = simulation.participant_user_ids
-
             # シミュレーション実行
             result = await self.simulation_director_service.execute_simulation(
                 simulation.instruction,
-                participant_agent_ids
+                participant_agent_ids,
+                simulation.participant_user_ids
             )
 
             # 結果を保存
@@ -303,7 +300,34 @@ class SimulationService:
         Returns:
             参加者のエージェントIDリスト
         """
-        # TODO: 実際のエージェントID取得ロジックを実装
-        # ここでは仮の実装として、ユーザーIDをそのまま返す
-        # 実際の実装では、ユーザーIDからエージェントIDを取得する必要があります
-        return participant_user_ids 
+        try:
+            agent_ids = []
+            users_collection = self.db.collection('users')
+            
+            for user_id in participant_user_ids:
+                # ユーザードキュメントを取得
+                user_doc = users_collection.document(user_id).get()
+                
+                if user_doc.exists:
+                    user_data = user_doc.to_dict()
+                    agent_engine_id = user_data.get('agent_engine_id')
+                    
+                    if agent_engine_id:
+                        agent_ids.append(agent_engine_id)
+                        logger.info(f"Found agent_engine_id for user {user_id}: {agent_engine_id}")
+                    else:
+                        logger.warning(f"No agent_engine_id found for user {user_id}")
+                        # agent_engine_idがない場合は、ユーザーIDをそのまま使用（フォールバック）
+                        agent_ids.append(user_id)
+                else:
+                    logger.warning(f"User document not found for user_id: {user_id}")
+                    # ユーザードキュメントが見つからない場合は、ユーザーIDをそのまま使用（フォールバック）
+                    agent_ids.append(user_id)
+            
+            logger.info(f"Retrieved agent IDs: {agent_ids}")
+            return agent_ids
+            
+        except Exception as e:
+            logger.error(f"Error getting participant agent IDs: {str(e)}")
+            # エラーが発生した場合は、元のユーザーIDをそのまま返す（フォールバック）
+            return participant_user_ids 

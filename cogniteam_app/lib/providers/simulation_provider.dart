@@ -1,10 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cogniteam_app/services/simulation_service.dart';
 import 'package:cogniteam_app/models/simulation.dart';
+import 'package:cogniteam_app/services/user_service.dart';
+import 'package:cogniteam_app/providers/auth_provider.dart';
 
 // SimulationServiceのプロバイダー
 final simulationServiceProvider = Provider<SimulationService>((ref) {
   return SimulationService();
+});
+
+// UserServiceのプロバイダー
+final userServiceProvider = Provider<UserService>((ref) {
+  final apiService = ref.watch(apiServiceProvider).value;
+  if (apiService == null) {
+    throw Exception(
+        "ApiService not yet available for UserService. Ensure ApiServiceProvider is loaded.");
+  }
+  return UserService(apiService);
 });
 
 // シミュレーション作成の状態管理
@@ -41,6 +53,43 @@ final simulationRerunProvider =
         (ref) {
   final simulationService = ref.watch(simulationServiceProvider);
   return SimulationRerunNotifier(simulationService);
+});
+
+// 参加者のユーザー情報を取得するプロバイダー
+final participantsInfoProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, List<String>>(
+        (ref, userIds) async {
+  final userService = ref.watch(userServiceProvider);
+  final participants = <Map<String, dynamic>>[];
+
+  for (final userId in userIds) {
+    try {
+      final user = await userService.getUserById(userId);
+      if (user != null) {
+        participants.add({
+          'userId': userId,
+          'displayName': user.name,
+          'email': user.email,
+        });
+      } else {
+        // ユーザーが見つからない場合は、userIdをそのまま使用
+        participants.add({
+          'userId': userId,
+          'displayName': userId,
+          'email': 'Unknown',
+        });
+      }
+    } catch (e) {
+      // エラーが発生した場合は、userIdをそのまま使用
+      participants.add({
+        'userId': userId,
+        'displayName': userId,
+        'email': 'Error',
+      });
+    }
+  }
+
+  return participants;
 });
 
 // シミュレーション作成のNotifier

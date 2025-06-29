@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from utils.firebase_setup import initialize_firebase_admin
-from routers import auth, user, agent, chat_group, chat, insight
+from routers import auth, user, agent, chat_group, chat, insight, simulation
 from config import settings
 
 # Initialize Firebase Admin SDK on startup
@@ -36,6 +36,7 @@ app.include_router(agent.router, prefix="/api/v1")
 app.include_router(chat_group.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1") # WebSocket routes might have a different prefix or none if ws:// is distinct enough
 app.include_router(insight.router, prefix="/api/v1")
+app.include_router(simulation.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health", tags=["Health"])

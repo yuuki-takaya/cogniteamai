@@ -1,6 +1,7 @@
 import 'package:cogniteam_app/models/user.dart'; // AppUser and UserUpdate (if we make a specific model for FE)
 import 'package:cogniteam_app/services/api_service.dart';
 import 'package:dio/dio.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // UserUpdate model for frontend (optional, can use Map<String, dynamic> directly)
 // This would mirror backend's UserUpdate Pydantic model for type safety.
@@ -45,6 +46,7 @@ class UserProfileUpdateData {
 
 class UserService {
   final ApiService _apiService;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserService(this._apiService);
 
@@ -115,6 +117,21 @@ class UserService {
       throw Exception('API Error loading users: $errorMsg');
     } catch (e) {
       throw Exception('An unexpected error occurred while loading users: $e');
+    }
+  }
+
+  /// 指定されたユーザーIDのユーザー情報をFirestoreから取得
+  Future<AppUser?> getUserById(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return AppUser.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user by ID: $e');
+      return null;
     }
   }
 }

@@ -61,7 +61,7 @@ class UserService:
         doc = users_collection.where('email', '==', user_email).get()
 
     @staticmethod
-    async def create_user_in_firestore(user_id: str, user_email:str, user_data_dict: dict, prompt: str, agent_engine_endpoint: str = None, db_client = None) -> User | None:
+    async def create_user_in_firestore(user_id: str, user_email:str, user_data_dict: dict, prompt: str, agent_engine_endpoint: str = None, agent_engine_id: str = None, db_client = None) -> User | None:
         """
         Creates a user profile document in Firestore.
         user_id: Firebase UID.
@@ -69,6 +69,7 @@ class UserService:
         user_data_dict: Dictionary of user profile data (from UserCreate model, excluding password).
         prompt: Generated prompt string.
         agent_engine_endpoint: Vertex AI Agent Engine endpoint URL (optional).
+        agent_engine_id: Vertex AI Agent Engine ID (optional).
         db_client: Firestore client instance.
         Returns a Pydantic User model instance if successful, None otherwise.
         """
@@ -77,6 +78,7 @@ class UserService:
         print(f"UserService: User data dict: {user_data_dict}")
         print(f"UserService: Prompt length: {len(prompt)}")
         print(f"UserService: Agent Engine Endpoint: {agent_engine_endpoint}")
+        print(f"UserService: Agent Engine ID: {agent_engine_id}")
         
         users_collection = db_client.collection('users')
         try:
@@ -97,6 +99,7 @@ class UserService:
                 "role": user_data_dict.get("role"),
                 "prompt": prompt,
                 "agent_engine_endpoint": agent_engine_endpoint, # Add the endpoint URL
+                "agent_engine_id": agent_engine_id, # Add the agent engine ID
                 "created_at": date.today().isoformat(), # Add created_at field
                 # Add any other fields from User model that should be initialized
                 # "created_at": firestore.SERVER_TIMESTAMP, # Optional: server-side timestamp

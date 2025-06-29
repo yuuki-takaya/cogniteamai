@@ -59,6 +59,7 @@ class AuthService:
 
         # Create Google AI Agent and register with Vertex AI Agent Engine
         agent_engine_endpoint = None
+        agent_engine_id = None
         if settings.VERTEX_AI_AGENT_ENGINE_ENABLED and not settings.VERTEX_AI_AGENT_ENGINE_SKIP_CREATION:
             print(f"AuthService: Agent Engine is enabled, attempting to create agent for user {uid}")
             try:
@@ -77,10 +78,12 @@ class AuthService:
                     timeout=600.0  # 10 minutes timeout
                 )
                 agent_engine_endpoint = agent_result["endpoint_url"]
-                print(f"AuthService: Successfully created and registered agent for user {uid}. Endpoint: {agent_engine_endpoint}")
+                agent_engine_id = agent_result["agent_id"]
+                print(f"AuthService: Successfully created and registered agent for user {uid}. Endpoint: {agent_engine_endpoint}, ID: {agent_engine_id}")
             except asyncio.TimeoutError:
                 print(f"AuthService: Agent Engine creation timed out for user {uid}. Continuing without agent.")
                 agent_engine_endpoint = None
+                agent_engine_id = None
             except Exception as e:
                 print(f"AuthService: Warning: Failed to create/register agent for user {uid}: {e}")
                 print(f"AuthService: Error type: {type(e)}")
@@ -89,10 +92,15 @@ class AuthService:
                 # Continue with user creation even if agent creation fails
                 # The user can still use the system, just without a personalized agent
                 agent_engine_endpoint = None
+                agent_engine_id = None
         elif settings.VERTEX_AI_AGENT_ENGINE_SKIP_CREATION:
             print(f"AuthService: Agent Engine creation is skipped (VERTEX_AI_AGENT_ENGINE_SKIP_CREATION=true). Skipping agent creation for user {uid}")
+            agent_engine_endpoint = None
+            agent_engine_id = None
         else:
             print(f"AuthService: Agent Engine is disabled (VERTEX_AI_AGENT_ENGINE_ENABLED=false). Skipping agent creation for user {uid}")
+            agent_engine_endpoint = None
+            agent_engine_id = None
 
         try:
             # Create user profile in Firestore using UserService
@@ -103,6 +111,7 @@ class AuthService:
                 user_data_dict=user_profile_data, # Pass the full Pydantic model data as dict
                 prompt=prompt,
                 agent_engine_endpoint=agent_engine_endpoint, # Pass the endpoint URL
+                agent_engine_id=agent_engine_id, # Pass the agent engine ID
                 db_client=db # Pass the Firestore client
             )
             if not created_user_profile:

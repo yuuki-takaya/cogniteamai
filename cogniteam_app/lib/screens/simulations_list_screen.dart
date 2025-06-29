@@ -69,8 +69,7 @@ class SimulationsListScreen extends ConsumerWidget {
                 return _SimulationCard(
                   simulation: simulation,
                   onTap: () {
-                    // TODO: シミュレーション詳細画面に遷移
-                    // context.push(AppRoutes.simulationDetail, extra: simulation.simulationId);
+                    context.push('/simulation/${simulation.simulationId}');
                   },
                 );
               },

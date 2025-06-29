@@ -10,6 +10,9 @@ import 'package:cogniteam_app/screens/edit_my_agent_screen.dart';
 import 'package:cogniteam_app/screens/create_chat_group_screen.dart';
 import 'package:cogniteam_app/screens/chat_groups_list_screen.dart';
 import 'package:cogniteam_app/screens/chat_screen.dart'; // Import ChatScreen
+import 'package:cogniteam_app/screens/create_simulation_screen.dart';
+import 'package:cogniteam_app/screens/simulations_list_screen.dart';
+import 'package:cogniteam_app/screens/simulation_detail_screen.dart';
 
 // Route paths
 class AppRoutes {
@@ -22,6 +25,9 @@ class AppRoutes {
   static const String chatGroupsList = '/chat-groups';
   static const String chatScreen =
       '/chat/:groupId'; // Route with path parameter for groupId
+  static const String createSimulation = '/create-simulation';
+  static const String simulationsList = '/simulations';
+  static const String simulationDetail = '/simulation/:simulationId';
   // Add other routes here, e.g., editProfile, chatGroup, etc.
 }
 
@@ -137,6 +143,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             );
           }
           return ChatScreen(groupId: groupId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.createSimulation,
+        builder: (BuildContext context, GoRouterState state) =>
+            const CreateSimulationScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.simulationsList,
+        builder: (BuildContext context, GoRouterState state) =>
+            const SimulationsListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.simulationDetail,
+        builder: (BuildContext context, GoRouterState state) {
+          final simulationId = state.pathParameters['simulationId'];
+          if (simulationId == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text("Error")),
+              body: const Center(child: Text("Simulation ID is missing.")),
+            );
+          }
+          return SimulationDetailScreen(simulationId: simulationId);
         },
       ),
     ],
