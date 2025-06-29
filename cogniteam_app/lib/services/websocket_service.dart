@@ -53,15 +53,19 @@ class WebSocketService {
       }
 
       // Determine base WebSocket URL (ws:// or wss://)
-      // This needs to be configured, perhaps from .env or derived from HTTP base URL
-      String wsBaseUrl = dotenv.env['BACKEND_WEBSOCKET_URL'] ??
-          dotenv.env['BACKEND_BASE_URL'] ??
-          "";
+      String wsBaseUrl = dotenv.env['BACKEND_WEBSOCKET_URL'] ?? "";
 
       if (wsBaseUrl.isEmpty) {
-        print(
-            "Warning: BACKEND_WEBSOCKET_URL or BACKEND_BASE_URL not set for WebSocket. Using default development URL.");
-        wsBaseUrl = "http://localhost:8000";
+        // Fallback to HTTP base URL and convert to WebSocket
+        final httpBaseUrl = dotenv.env['BACKEND_BASE_URL'] ?? "";
+        if (httpBaseUrl.isNotEmpty) {
+          // Remove /api/v1 from the end if present
+          wsBaseUrl = httpBaseUrl.replaceAll('/api/v1', '');
+        } else {
+          print(
+              "Warning: No backend URL configured. Using default development URL.");
+          wsBaseUrl = "http://localhost:8000";
+        }
       }
 
       // Convert http/https to ws/wss
@@ -71,24 +75,8 @@ class WebSocketService {
         wsBaseUrl = wsBaseUrl.replaceFirst('http://', 'ws://');
       }
 
-      // Ensure it doesn't end with /api/v1 if the WebSocket route is absolute from host like /ws/chat...
-      // The backend router for chat.py has prefix="/ws". So, ws://host:port/ws/chat/...
-      // If BACKEND_BASE_URL = http://host:port/api/v1, we need to adjust.
-      // Let's assume BACKEND_WEBSOCKET_URL points to ws://host:port
-      // Or, if BACKEND_BASE_URL is http://host:port, then path is /api/v1/ws/chat...
-      // The current backend router setup is /api/v1/ws/chat/{group_id}/{token}
-
-      // Let's assume wsBaseUrl should be like "ws://127.0.0.1:8000"
-      // And the path is "/api/v1/ws/chat/{groupId}/{token}"
-      // The backend router is @router.websocket("/chat/{group_id}/{token}") with prefix="/api/v1/ws"
-      // So, full path is wsBaseUrl + /api/v1/ws/chat/{groupId}/{token} if wsBaseUrl is just "ws://host:port"
-      // Or if wsBaseUrl = "ws://host:port/api/v1" then path is /ws/chat...
-
-      // Using the provided backend structure: FastAPI prefix "/api/v1", chat router prefix "/ws"
-      // So the path on the server is effectively /api/v1/ws/chat/{group_id}/{token}
-      // The wsBaseUrl should point to the root, e.g., ws://127.0.0.1:8000
-      // Example: ws://localhost:8000/api/v1/ws/chat/GROUP_ID/TOKEN
-
+      // Ensure we have the correct WebSocket URL format
+      // The backend expects: wss://host:port/api/v1/ws/chat/{groupId}/{token}
       final String webSocketUrl =
           "$wsBaseUrl/api/v1/ws/chat/$_groupId/$idToken";
       print("WebSocketService: Connecting to $webSocketUrl");

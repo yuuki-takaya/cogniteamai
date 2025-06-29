@@ -99,6 +99,12 @@ class SimulationService:
                 return None
                 
             data = doc.to_dict()
+            
+            # result_summaryがリストの場合は文字列として結合
+            result_summary = data.get('result_summary')
+            if isinstance(result_summary, list):
+                result_summary = '\n\n'.join(result_summary)
+            
             return SimulationResponse(
                 simulation_id=simulation_id,
                 simulation_name=data['simulation_name'],
@@ -108,7 +114,7 @@ class SimulationService:
                 created_at=data['created_at'],
                 started_at=data.get('started_at'),
                 completed_at=data.get('completed_at'),
-                result_summary=data.get('result_summary'),
+                result_summary=result_summary,
                 error_message=data.get('error_message'),
                 created_by=data['created_by']
             )
@@ -138,6 +144,12 @@ class SimulationService:
             simulations = []
             for doc in docs:
                 data = doc.to_dict()
+                
+                # result_summaryがリストの場合は文字列として結合
+                result_summary = data.get('result_summary')
+                if isinstance(result_summary, list):
+                    result_summary = '\n\n'.join(result_summary)
+                
                 simulation = SimulationResponse(
                     simulation_id=doc.id,
                     simulation_name=data['simulation_name'],
@@ -147,7 +159,7 @@ class SimulationService:
                     created_at=data['created_at'],
                     started_at=data.get('started_at'),
                     completed_at=data.get('completed_at'),
-                    result_summary=data.get('result_summary'),
+                    result_summary=result_summary,
                     error_message=data.get('error_message'),
                     created_by=data['created_by']
                 )
@@ -270,11 +282,14 @@ class SimulationService:
                 simulation.participant_user_ids
             )
 
+            # 結果を文字列として結合して保存
+            result_summary = result if isinstance(result, str) else '\n\n'.join(result) if isinstance(result, list) else str(result)
+
             # 結果を保存
             doc_ref.update({
                 'status': 'completed',
                 'completed_at': datetime.utcnow(),
-                'result_summary': result
+                'result_summary': result_summary
             })
 
             logger.info(f"Simulation completed successfully: {simulation_id}")

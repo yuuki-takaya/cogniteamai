@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import Response
+from starlette.requests import Request
 from utils.firebase_setup import initialize_firebase_admin
 from routers import auth, user, agent, chat_group, chat, insight, simulation
 from config import settings
@@ -13,11 +16,23 @@ import firebase_admin
 print(f"Main: Firebase Admin SDK apps after initialization: {firebase_admin._apps}")
 print(f"Main: Default app exists: {firebase_admin._apps.get('[DEFAULT]') is not None}")
 
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Add Access-Control-Allow-Private-Network header for private network requests
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+        
+        return response
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
     # You can add other FastAPI parameters here like description, docs_url, etc.
 )
+
+# Add custom CORS middleware first
+app.add_middleware(CustomCORSMiddleware)
 
 # CORS (Cross-Origin Resource Sharing) configuration
 # This allows your Flutter web app (and other specified origins) to make requests to the backend.
@@ -27,6 +42,7 @@ app.add_middleware(
     allow_credentials=True, # Allows cookies to be included in cross-origin requests
     allow_methods=["*"],    # Allows all standard HTTP methods
     allow_headers=["*"],    # Allows all headers
+    expose_headers=["*"],   # Expose all headers to the client
 )
 
 # Include routers

@@ -47,7 +47,13 @@ class Settings:
     ALLOWED_ORIGINS: list[str] = os.getenv("ALLOWED_ORIGINS", "*").split(',')
     # If ALLOWED_ORIGINS is not set or empty, default to a restrictive or common dev setup.
     if not ALLOWED_ORIGINS or ALLOWED_ORIGINS == ['']:
-        ALLOWED_ORIGINS = ["*"] # Allow all origins for development
+        # Default origins for development and production
+        ALLOWED_ORIGINS = [
+            "http://localhost:3000",
+            "http://localhost:8080", 
+            "https://handsonadk.web.app",
+            "https://handsonadk.firebaseapp.com"
+        ]
 
 
 settings = Settings()

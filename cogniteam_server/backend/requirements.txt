@@ -1,9 +1,10 @@
 fastapi
 uvicorn[standard]
+gunicorn
 pydantic[email]
 python-dotenv
 firebase-admin
-google-cloud-aiplatform[agent_engines,adk]>=1.88.0
 google-generativeai
-google-adk
+google-cloud-aiplatform==1.96.0
+google-adk==1.2.1
 cloudpickle==3.1.1

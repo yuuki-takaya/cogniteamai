@@ -77,6 +77,7 @@ class AuthService:
                     ),
                     timeout=600.0  # 10 minutes timeout
                 )
+                print(f"AuthService: Agent Engine result: {agent_result['agent_id']}")
                 agent_engine_endpoint = agent_result["endpoint_url"]
                 agent_engine_id = agent_result["agent_id"]
                 print(f"AuthService: Successfully created and registered agent for user {uid}. Endpoint: {agent_engine_endpoint}, ID: {agent_engine_id}")

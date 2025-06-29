@@ -86,6 +86,7 @@ async def signup_new_user(user_data: UserCreate):
                                     timeout=600.0  # 10 minutes timeout
                                 )
                                 agent_engine_endpoint = agent_result["endpoint_url"]
+                                agent_engine_id = agent_result["agent_id"]
                                 print(f"Successfully created and registered agent for existing user {uid}. Endpoint: {agent_engine_endpoint}")
                             except asyncio.TimeoutError:
                                 print(f"Agent Engine creation timed out for existing user {uid}. Continuing without agent.")
@@ -111,6 +112,7 @@ async def signup_new_user(user_data: UserCreate):
                             user_data_dict=user_profile_data,
                             prompt=prompt,
                             agent_engine_endpoint=agent_engine_endpoint,  # Pass the endpoint URL
+                            agent_engine_id=agent_engine_id,  # Pass the agent ID
                             db_client=db
                         )
                         

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cogniteam_app/models/simulation.dart' as sim;
 import 'package:cogniteam_app/providers/simulation_provider.dart';
 import 'package:cogniteam_app/navigation/app_router.dart';
+import 'package:markdown/markdown.dart' as md;
+import 'dart:convert';
 
 class SimulationDetailScreen extends ConsumerWidget {
   final String simulationId;
@@ -210,41 +212,62 @@ class SimulationDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildResultSection(sim.Simulation simulation) {
+    final result = simulation.resultSummary;
+    List<Widget> children = [
+      Row(
+        children: [
+          Icon(
+            Icons.check_circle,
+            color: Colors.green[700],
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'シミュレーション結果',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.green[700],
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+    ];
+
+    dynamic parsedResult = result;
+    // もし文字列でJSON配列形式ならデコード
+    if (result is String &&
+        result.trim().startsWith('[') &&
+        result.trim().endsWith(']')) {
+      try {
+        final decoded = jsonDecode(result);
+        if (decoded is List) {
+          parsedResult = decoded;
+        }
+      } catch (_) {}
+    }
+
+    if (parsedResult != null && parsedResult is List) {
+      for (final part in parsedResult) {
+        if (part is String && part.trim().isNotEmpty) {
+          children.add(_MarkdownView(part));
+          children.add(const SizedBox(height: 16));
+        }
+      }
+    } else if (parsedResult is String && parsedResult.trim().isNotEmpty) {
+      children.add(_MarkdownView(parsedResult));
+    } else {
+      children.add(const Text('結果がありません'));
+    }
+
     return Card(
       color: Colors.green[50],
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: Colors.green[700],
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'シミュレーション結果',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              simulation.resultSummary!,
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.5,
-                color: Colors.green[800],
-              ),
-            ),
-          ],
+          children: children,
         ),
       ),
     );
@@ -491,6 +514,24 @@ class _TimelineItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MarkdownView extends StatelessWidget {
+  final String markdownData;
+  const _MarkdownView(this.markdownData);
+
+  @override
+  Widget build(BuildContext context) {
+    // markdownをパースしてplain textに変換（シンプルな表示）
+    final plainText = md.Document()
+        .parseLines(markdownData.split('\n'))
+        .map((e) => e.textContent)
+        .join('\n');
+    return SelectableText(
+      plainText,
+      style: const TextStyle(fontSize: 16, color: Colors.green),
     );
   }
 }

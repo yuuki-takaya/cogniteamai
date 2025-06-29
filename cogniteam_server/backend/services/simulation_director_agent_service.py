@@ -10,6 +10,7 @@ import types
 from .local_app import LocalApp
 from config import settings
 import time
+import re
 
 
 PROJECT_ID = 'handsonadk'
@@ -79,6 +80,15 @@ class SimulationDirectorAgentService:
         # user_idが指定されていない場合は、agent_idを使用
         if user_id is None:
             user_id = agent_id
+        else:
+            # ユーザーIDを単純な形式に変更（Vertex AIの制限を回避）
+            # Firebase UIDから数字部分を抽出、または短縮
+            if len(user_id) > 10:
+                # 数字とアルファベットのみを抽出して短縮
+                alphanumeric = re.sub(r'[^a-zA-Z0-9]', '', user_id)
+                user_id = f"u{alphanumeric[:8]}"
+            else:
+                user_id = f"u{user_id}"
         
         def participant_agent_tool(query: str) -> str:
             """
@@ -104,10 +114,38 @@ class SimulationDirectorAgentService:
             time.sleep(6)
 
             remote_agent = agent_engines.get(AGENT_ID)
-            session = remote_agent.create_session(user_id=user_id)
+            
+            # セッション作成をリトライ
+            max_retries = 3
+            session = None
+            final_user_id = user_id  # 最終的に使用されたuser_idを記録
+            
+            for attempt in range(max_retries):
+                try:
+                    session = remote_agent.create_session(user_id=user_id)
+                    break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Session creation failed for agent {AGENT_ID}, attempt {attempt + 1}/{max_retries}: {e}")
+                        time.sleep(10)  # 10秒待機してリトライ
+                    else:
+                        logger.error(f"Session creation failed for agent {AGENT_ID} after {max_retries} attempts: {e}")
+                        # 最後の試行として固定ユーザーIDを使用
+                        try:
+                            logger.info(f"Trying with fixed user_id for agent {AGENT_ID}")
+                            session = remote_agent.create_session(user_id="default_user")
+                            final_user_id = "default_user"  # 固定ユーザーIDを使用した場合
+                            break
+                        except Exception as e2:
+                            logger.error(f"Session creation failed even with fixed user_id for agent {AGENT_ID}: {e2}")
+                            raise e  # 元のエラーを再発生
+            
+            if session is None:
+                raise Exception(f"Failed to create session for agent {AGENT_ID}")
+            
             try:
                 events = remote_agent.stream_query(
-                            user_id=user_id,
+                            user_id=final_user_id,
                             session_id=session['id'],
                             message=query,
                          )
@@ -123,7 +161,7 @@ class SimulationDirectorAgentService:
 
             finally:
                 remote_agent.delete_session(
-                    user_id=user_id,
+                    user_id=final_user_id,
                     session_id=session['id'],
                 )
         
@@ -225,7 +263,6 @@ class SimulationDirectorAgentService:
             # 仮の結果（実際のADKからの結果に置き換える必要があります）
             result = f"""
 # シミュレーション結果
-
 ## 実行指示
 {instruction}
 
@@ -239,7 +276,6 @@ class SimulationDirectorAgentService:
 1. **即座に実行可能な改善策**: チーム内のコミュニケーション改善のための具体的なアクションプラン
 2. **長期的な改善策**: 組織文化の改善に向けた継続的な取り組み
 
-## 詳細分析
 {result_detail}
 """
             

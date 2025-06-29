@@ -192,6 +192,8 @@ class AgentEngineService:
                 agent_name = deployment_result.get("agent_name", agent.name)
                 endpoint_url = f"https://projects/{self.project_id}/locations/{self.location}/reasoningEngines/{resource_name}"
                 agent_id = agent_name
+                print(f"AgentEngineService: Successfully deployed agent to: {agent_name}")
+                print(f"AgentEngineService: Successfully deployed agent to: {agent_id}")
                 print(f"AgentEngineService: Successfully deployed agent to: {endpoint_url}")
             else:
                 # Fallback to placeholder endpoint

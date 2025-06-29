@@ -135,4 +135,27 @@ class ChatGroupService {
           'An unexpected error occurred setting mission for group $groupId: $e');
     }
   }
+
+  /// Sends a message to a chat group.
+  Future<Message> sendMessageToGroup(String groupId, String content) async {
+    try {
+      final response = await _apiService.post(
+        '/chat_groups/$groupId/messages',
+        data: {'content': content},
+      );
+      if (response.statusCode == 201 && response.data != null) {
+        return Message.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception(
+            'Failed to send message to group $groupId: ${response.statusMessage} ${response.data}');
+      }
+    } on DioException catch (e) {
+      final errorMsg =
+          e.response?.data?['detail'] ?? e.message ?? "Failed to send message";
+      throw Exception('API Error sending message to group $groupId: $errorMsg');
+    } catch (e) {
+      throw Exception(
+          'An unexpected error occurred sending message to group $groupId: $e');
+    }
+  }
 }
