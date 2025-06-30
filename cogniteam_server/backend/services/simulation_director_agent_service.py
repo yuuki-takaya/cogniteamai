@@ -13,8 +13,8 @@ import time
 import re
 
 
-PROJECT_ID = 'handsonadk'
-LOCATION = 'us-central1'
+PROJECT_ID = os.getenv('VERTEX_AI_PROJECT')
+LOCATION = os.getenv('VERTEX_AI_LOCATION')
 
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 
@@ -103,9 +103,9 @@ class SimulationDirectorAgentService:
             import vertexai
             from vertexai import agent_engines
 
-            PROJECT_ID = 'handsonadk' # 実際のプロジェクト ID に変更
+            PROJECT_ID = os.getenv('VERTEX_AI_PROJECT')
             AGENT_ID = agent_id
-            LOCATION = 'us-central1'
+            LOCATION = os.getenv('VERTEX_AI_LOCATION')
             vertexai.init(project=PROJECT_ID, location=LOCATION)
 
             print(f"AGENT_ID: {AGENT_ID}, USER_ID: {user_id}")

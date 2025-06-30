@@ -4,7 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import Response
 from starlette.requests import Request
 from utils.firebase_setup import initialize_firebase_admin
-from routers import auth, user, agent, chat_group, chat, insight, simulation
+from routers import auth, user, agent, chat_group, chat, insight, simulation, sse
 from config import settings
 
 # Initialize Firebase Admin SDK on startup
@@ -38,7 +38,7 @@ app.add_middleware(CustomCORSMiddleware)
 # This allows your Flutter web app (and other specified origins) to make requests to the backend.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS, # List of allowed origins (e.g., ["http://localhost:3000"])
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True, # Allows cookies to be included in cross-origin requests
     allow_methods=["*"],    # Allows all standard HTTP methods
     allow_headers=["*"],    # Allows all headers
@@ -53,6 +53,7 @@ app.include_router(chat_group.router, prefix="/api/v1")
 # app.include_router(chat.router, prefix="/api/v1") # WebSocket routes disabled
 app.include_router(insight.router, prefix="/api/v1")
 app.include_router(simulation.router, prefix="/api/v1")
+app.include_router(sse.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health", tags=["Health"])

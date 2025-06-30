@@ -16,6 +16,8 @@ class SimulationDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print("SimulationDetailScreen: Building with simulationId: $simulationId");
+
     final simulationAsync = ref.watch(simulationDetailProvider(simulationId));
 
     return Scaffold(
@@ -26,6 +28,9 @@ class SimulationDetailScreen extends ConsumerWidget {
       ),
       body: simulationAsync.when(
         data: (simulation) {
+          print(
+              "SimulationDetailScreen: Received simulation data: ${simulation?.simulationId}");
+
           if (simulation == null) {
             return const Center(
               child: Text('シミュレーションが見つかりません'),
@@ -70,9 +75,27 @@ class SimulationDetailScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('エラーが発生しました: $error'),
-        ),
+        error: (error, stack) {
+          print("SimulationDetailScreen: Error occurred: $error");
+          print("SimulationDetailScreen: Stack trace: $stack");
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('エラーが発生しました:'),
+                const SizedBox(height: 8),
+                Text(error.toString()),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.invalidate(simulationDetailProvider(simulationId));
+                  },
+                  child: const Text('再試行'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

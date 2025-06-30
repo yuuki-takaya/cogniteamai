@@ -27,7 +27,7 @@ class AppRoutes {
       '/chat/:groupId'; // Route with path parameter for groupId
   static const String createSimulation = '/create-simulation';
   static const String simulationsList = '/simulations';
-  static const String simulationDetail = '/simulation/:simulationId';
+  static const String simulationDetail = '/simulations/:simulationId';
   // Add other routes here, e.g., editProfile, chatGroup, etc.
 }
 
@@ -159,7 +159,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.simulationDetail,
         builder: (BuildContext context, GoRouterState state) {
           final simulationId = state.pathParameters['simulationId'];
+          print(
+              "GoRouter: Building simulation detail screen with simulationId: $simulationId");
+          print("GoRouter: Full path: ${state.uri}");
+          print("GoRouter: Path parameters: ${state.pathParameters}");
+
           if (simulationId == null) {
+            print("GoRouter: Error - simulationId is null");
             return Scaffold(
               appBar: AppBar(title: const Text("Error")),
               body: const Center(child: Text("Simulation ID is missing.")),

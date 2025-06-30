@@ -8,12 +8,12 @@
 
 ```bash
 # Firebase Settings
-FIREBASE_SERVICE_ACCOUNT_KEY_PATH=handsonadk-firebase-adminsdk-fbsvc-84b61d725e.json
+FIREBASE_SERVICE_ACCOUNT_KEY_PATH=path/service_account_key_path.json
 
 # Vertex AI Settings
 VERTEX_AI_PROJECT=your-gcp-project-id
 VERTEX_AI_LOCATION=us-central1
-VERTEX_AI_CHAT_MODEL_NAME=gemini-1.0-pro
+VERTEX_AI_CHAT_MODEL_NAME=model_name
 VERTEX_AI_INSIGHT_MODEL_NAME=text-bison@002
 
 # Google AI Agent Settings

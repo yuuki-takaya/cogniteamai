@@ -5,6 +5,8 @@ import logging
 from firebase_admin import firestore
 from models import Simulation, SimulationCreate, SimulationResponse, SimulationListResponse
 from services.simulation_director_agent_service import SimulationDirectorAgentService
+from routers.sse import broadcast_simulation_notification
+from utils.firebase_setup import initialize_firebase_admin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -294,6 +296,20 @@ class SimulationService:
 
             logger.info(f"Simulation completed successfully: {simulation_id}")
 
+            # シミュレーション作成者にSSE通知を送信
+            try:
+                notification_data = {
+                    'type': 'simulation_completed',
+                    'simulation_id': simulation_id,
+                    'simulation_name': simulation.simulation_name,
+                    'message': f'シミュレーション "{simulation.simulation_name}" が完了しました',
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+                await broadcast_simulation_notification(simulation.created_by, notification_data)
+                logger.info(f"Simulation completion notification sent to user {simulation.created_by}")
+            except Exception as e:
+                logger.error(f"Failed to send simulation completion notification: {str(e)}")
+
         except Exception as e:
             logger.error(f"Error executing simulation in background: {str(e)}")
             
@@ -304,6 +320,23 @@ class SimulationService:
                 'completed_at': datetime.utcnow(),
                 'error_message': str(e)
             })
+
+            # シミュレーション作成者にエラー通知を送信
+            try:
+                simulation = await self.get_simulation(simulation_id)
+                if simulation:
+                    notification_data = {
+                        'type': 'simulation_failed',
+                        'simulation_id': simulation_id,
+                        'simulation_name': simulation.simulation_name,
+                        'message': f'シミュレーション "{simulation.simulation_name}" でエラーが発生しました',
+                        'error': str(e),
+                        'timestamp': datetime.utcnow().isoformat()
+                    }
+                    await broadcast_simulation_notification(simulation.created_by, notification_data)
+                    logger.info(f"Simulation failure notification sent to user {simulation.created_by}")
+            except Exception as notification_error:
+                logger.error(f"Failed to send simulation failure notification: {str(notification_error)}")
 
     async def _get_participant_agent_ids(self, participant_user_ids: List[str]) -> List[str]:
         """

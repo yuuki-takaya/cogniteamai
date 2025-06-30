@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cogniteam_app/services/simulation_service.dart';
 import 'package:cogniteam_app/models/simulation.dart';
 import 'package:cogniteam_app/services/user_service.dart';
 import 'package:cogniteam_app/providers/auth_provider.dart';
+import 'package:cogniteam_app/services/sse_service.dart';
+import 'package:cogniteam_app/services/api_service.dart';
 
 // SimulationServiceのプロバイダー
 final simulationServiceProvider = Provider<SimulationService>((ref) {
@@ -169,3 +172,116 @@ class SimulationRerunNotifier extends StateNotifier<AsyncValue<Simulation?>> {
     state = const AsyncValue.data(null);
   }
 }
+
+// シミュレーション通知の状態
+class SimulationNotificationState {
+  final List<Map<String, dynamic>> notifications;
+  final bool isConnected;
+  final String? errorMessage;
+
+  SimulationNotificationState({
+    this.notifications = const [],
+    this.isConnected = false,
+    this.errorMessage,
+  });
+
+  SimulationNotificationState copyWith({
+    List<Map<String, dynamic>>? notifications,
+    bool? isConnected,
+    String? errorMessage,
+    bool clearErrorMessage = false,
+  }) {
+    return SimulationNotificationState(
+      notifications: notifications ?? this.notifications,
+      isConnected: isConnected ?? this.isConnected,
+      errorMessage:
+          clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+// シミュレーション通知のNotifier
+class SimulationNotificationNotifier
+    extends StateNotifier<SimulationNotificationState> {
+  SimulationSSEService? _sseService;
+  StreamSubscription? _notificationSubscription;
+  StreamSubscription? _connectionStatusSubscription;
+
+  SimulationNotificationNotifier() : super(SimulationNotificationState()) {
+    _initializeSSE();
+  }
+
+  void _initializeSSE() {
+    print("SimulationNotificationNotifier: Starting initialization");
+    _sseService = SimulationSSEService();
+
+    // Listen to connection status
+    _connectionStatusSubscription =
+        _sseService!.connectionStatusStream.listen((isConnected) {
+      print(
+          "SimulationNotificationNotifier: Connection status changed to: $isConnected");
+      state = state.copyWith(isConnected: isConnected);
+      if (!isConnected) {
+        state = state.copyWith(errorMessage: "シミュレーション通知の接続が切断されました");
+      } else {
+        state = state.copyWith(errorMessage: null);
+      }
+    });
+
+    // Listen to notifications
+    _notificationSubscription =
+        _sseService!.notificationStream.listen((notification) {
+      print(
+          "SimulationNotificationNotifier: Received notification: $notification");
+
+      // 新しい通知をリストの先頭に追加
+      final updatedNotifications = [notification, ...state.notifications];
+
+      // 最大10件まで保持
+      if (updatedNotifications.length > 10) {
+        updatedNotifications.removeRange(10, updatedNotifications.length);
+      }
+
+      state = state.copyWith(notifications: updatedNotifications);
+    });
+
+    print(
+        "SimulationNotificationNotifier: Attempting to connect to SSE service");
+    _sseService!.connect().then((_) {
+      print("SimulationNotificationNotifier: SSE connection attempt completed");
+    }).catchError((error) {
+      print("SimulationNotificationNotifier: SSE connection failed: $error");
+      state = state.copyWith(errorMessage: "シミュレーション通知の接続に失敗しました: $error");
+    });
+
+    print(
+        "SimulationNotificationNotifier: Initialization completed successfully");
+  }
+
+  void clearNotifications() {
+    state = state.copyWith(notifications: []);
+  }
+
+  void removeNotification(int index) {
+    if (index >= 0 && index < state.notifications.length) {
+      final updatedNotifications =
+          List<Map<String, dynamic>>.from(state.notifications);
+      updatedNotifications.removeAt(index);
+      state = state.copyWith(notifications: updatedNotifications);
+    }
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    _connectionStatusSubscription?.cancel();
+    _sseService?.dispose();
+    super.dispose();
+  }
+}
+
+// シミュレーション通知のプロバイダー
+final simulationNotificationProvider = StateNotifierProvider<
+    SimulationNotificationNotifier, SimulationNotificationState>((ref) {
+  return SimulationNotificationNotifier();
+});
