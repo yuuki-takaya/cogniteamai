@@ -51,13 +51,4 @@ class DefaultFirebaseOptions {
         );
     }
   }
-
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDP4gPuBaQ54EvT1daOdwIYI5SHwsXyk8o',
-    appId: '1:16839756830:web:02239fafdcaaaf2838f20f',
-    messagingSenderId: '16839756830',
-    projectId: 'handsonadk',
-    authDomain: 'handsonadk.firebaseapp.com',
-    storageBucket: 'handsonadk.firebasestorage.app',
-  );
 }

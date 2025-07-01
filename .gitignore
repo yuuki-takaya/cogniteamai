@@ -31,6 +31,7 @@ cogniteam_server/backend/local_db.sqlite3 # Example if using sqlite for local de
 # cogniteam_app/build/
 # cogniteam_app/.env # This is critical if .env is in app root
 .firebase
+firebase_options.dart
 
 # IDE specific
 .idea/
